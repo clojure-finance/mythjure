@@ -1,0 +1,86 @@
+loading corpus...
+
+=== method=parcae lr=0.00100000  (ρ₀=0.50) ===
+  parcae lr=0.00100000 step  20  loss 3.797  ρ(Ā) 0.506  ‖H_T‖ 3.32
+  parcae lr=0.00100000 step  40  loss 3.384  ρ(Ā) 0.509  ‖H_T‖ 3.68
+  parcae lr=0.00100000 step  60  loss 3.370  ρ(Ā) 0.511  ‖H_T‖ 3.92
+  parcae lr=0.00100000 step  80  loss 3.097  ρ(Ā) 0.513  ‖H_T‖ 3.82
+  parcae lr=0.00100000 step 100  loss 3.784  ρ(Ā) 0.514  ‖H_T‖ 3.98
+  parcae lr=0.00100000 step 120  loss 3.233  ρ(Ā) 0.512  ‖H_T‖ 3.87
+parcae lr=0.00100000 DONE  ρ=0.512  ‖H_T‖=3.93  CONVERGED
+
+=== method=parcae lr=0.0100000  (ρ₀=0.50) ===
+  parcae lr=0.0100000 step  20  loss 3.167  ρ(Ā) 0.525  ‖H_T‖ 9.21
+  parcae lr=0.0100000 step  40  loss 2.847  ρ(Ā) 0.549  ‖H_T‖ 19.01
+  parcae lr=0.0100000 step  60  loss 3.377  ρ(Ā) 0.572  ‖H_T‖ 20.66
+  parcae lr=0.0100000 step  80  loss 3.131  ρ(Ā) 0.596  ‖H_T‖ 23.48
+  parcae lr=0.0100000 step 100  loss 3.804  ρ(Ā) 0.603  ‖H_T‖ 26.42
+  parcae lr=0.0100000 step 120  loss 3.238  ρ(Ā) 0.606  ‖H_T‖ 29.06
+parcae lr=0.0100000 DONE  ρ=0.606  ‖H_T‖=29.08  CONVERGED
+
+=== method=parcae lr=0.0300000  (ρ₀=0.50) ===
+  parcae lr=0.0300000 step  20  loss 3.186  ρ(Ā) 0.627  ‖H_T‖ 39.64
+  parcae lr=0.0300000 step  40  loss 2.839  ρ(Ā) 0.688  ‖H_T‖ 71.14
+  parcae lr=0.0300000 step  60  loss 3.366  ρ(Ā) 0.709  ‖H_T‖ 85.44
+  parcae lr=0.0300000 step  80  loss 3.091  ρ(Ā) 0.697  ‖H_T‖ 89.92
+  parcae lr=0.0300000 step 100  loss 3.823  ρ(Ā) 0.755  ‖H_T‖ 105.73
+  parcae lr=0.0300000 step 120  loss 3.238  ρ(Ā) 0.790  ‖H_T‖ 114.30
+parcae lr=0.0300000 DONE  ρ=0.790  ‖H_T‖=114.59  CONVERGED
+
+=== method=parcae lr=0.100000  (ρ₀=0.50) ===
+  parcae lr=0.100000 step  20  loss 3.288  ρ(Ā) 0.771  ‖H_T‖ 140.60
+  parcae lr=0.100000 step  40  loss 3.053  ρ(Ā) 0.740  ‖H_T‖ 210.62
+  parcae lr=0.100000 step  60  loss 3.421  ρ(Ā) 0.763  ‖H_T‖ 355.07
+  parcae lr=0.100000 step  80  loss 3.063  ρ(Ā) 0.763  ‖H_T‖ 367.57
+  parcae lr=0.100000 step 100  loss 3.866  ρ(Ā) 0.783  ‖H_T‖ 448.62
+  parcae lr=0.100000 step 120  loss 3.211  ρ(Ā) 0.777  ‖H_T‖ 461.51
+parcae lr=0.100000 DONE  ρ=0.777  ‖H_T‖=466.63  CONVERGED
+
+=== method=free lr=0.00100000  (ρ₀=0.50) ===
+  free lr=0.00100000 step  20  loss 3.797  ρ(Ā) 0.518  ‖H_T‖ 3.34
+  free lr=0.00100000 step  40  loss 3.384  ρ(Ā) 0.527  ‖H_T‖ 3.73
+  free lr=0.00100000 step  60  loss 3.369  ρ(Ā) 0.532  ‖H_T‖ 3.97
+  free lr=0.00100000 step  80  loss 3.097  ρ(Ā) 0.536  ‖H_T‖ 3.86
+  free lr=0.00100000 step 100  loss 3.784  ρ(Ā) 0.540  ‖H_T‖ 4.03
+  free lr=0.00100000 step 120  loss 3.233  ρ(Ā) 0.534  ‖H_T‖ 3.92
+free lr=0.00100000 DONE  ρ=0.534  ‖H_T‖=3.99  CONVERGED
+
+=== method=free lr=0.0100000  (ρ₀=0.50) ===
+  free lr=0.0100000 step  20  loss 3.168  ρ(Ā) 0.575  ‖H_T‖ 9.48
+  free lr=0.0100000 step  40  loss 2.853  ρ(Ā) 0.629  ‖H_T‖ 19.09
+  free lr=0.0100000 step  60  loss 3.369  ρ(Ā) 0.672  ‖H_T‖ 20.80
+  free lr=0.0100000 step  80  loss 3.109  ρ(Ā) 0.714  ‖H_T‖ 24.12
+  free lr=0.0100000 step 100  loss 3.787  ρ(Ā) 0.731  ‖H_T‖ 28.59
+  free lr=0.0100000 step 120  loss 3.232  ρ(Ā) 0.755  ‖H_T‖ 30.47
+free lr=0.0100000 DONE  ρ=0.755  ‖H_T‖=30.66  CONVERGED
+
+=== method=free lr=0.0300000  (ρ₀=0.50) ===
+  free lr=0.0300000 step  20  loss 3.193  ρ(Ā) 0.939  ‖H_T‖ 67.98
+  free lr=0.0300000 step  40  loss 2.867  ρ(Ā) 1.079  ‖H_T‖ 151.59
+  free lr=0.0300000 step  60  loss 3.359  ρ(Ā) 1.115  ‖H_T‖ 196.93
+  free lr=0.0300000 step  80  loss 3.073  ρ(Ā) 1.105  ‖H_T‖ 170.69
+  free lr=0.0300000 step 100  loss 3.679  ρ(Ā) 1.206  ‖H_T‖ 323.33
+  free lr=0.0300000 step 120  loss 3.184  ρ(Ā) 1.197  ‖H_T‖ 320.24
+free lr=0.0300000 DONE  ρ=1.197  ‖H_T‖=325.22  CONVERGED
+
+=== method=free lr=0.100000  (ρ₀=0.50) ===
+  free lr=0.100000 step  20  loss 3.192  ρ(Ā) 1.594  ‖H_T‖ 2552.62
+  free lr=0.100000 step  40  loss 2.888  ρ(Ā) 1.804  ‖H_T‖ 7905.29
+  free lr=0.100000 step  60  loss 3.372  ρ(Ā) 1.837  ‖H_T‖ 9204.58
+  free lr=0.100000 step  80  loss 3.126  ρ(Ā) 1.838  ‖H_T‖ 9699.07
+  free lr=0.100000 step 100  loss 3.849  ρ(Ā) 1.840  ‖H_T‖ 8824.76
+  free lr=0.100000 step 120  loss 3.197  ρ(Ā) 1.841  ‖H_T‖ 10976.62
+free lr=0.100000 DONE  ρ=1.841  ‖H_T‖=9566.91  CONVERGED
+
+===== SUMMARY: constrained (:parcae) vs unconstrained (:free) carry =====
+method   lr       final ρ(Ā)   ‖H_T‖        outcome
+parcae   0.00100000 0.512        3.93         converged
+parcae   0.0100000 0.606        29.1         converged
+parcae   0.0300000 0.790        115          converged
+parcae   0.100000 0.777        467          converged
+free     0.00100000 0.534        3.99         converged
+free     0.0100000 0.755        30.7         converged
+free     0.0300000 1.197        325          converged
+free     0.100000 1.841        9.57e+03     converged
+
+--- saved scripts/unconstrained_carry.edn ---

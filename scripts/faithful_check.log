@@ -1,0 +1,15 @@
+FAITHFUL (learnable Δ + B̄ + prelude LN) + windowed(w=1) copy curriculum
+
+=== k=2  predicted(if carry=mechanism) max(ā)=0.500 ===
+  k=2 step 100  loss 2.094  acc 0.56  max(ā) 0.518  mean dL/dā -0.0039
+  k=2 step 200  loss 1.411  acc 0.88  max(ā) 0.529  mean dL/dā -0.0094
+  k=2 step 300  loss 0.605  acc 0.84  max(ā) 0.535  mean dL/dā -0.0040
+k=2 DONE  acc=0.95  max(ā)=0.535  mean dL/dā=+0.0067  n(dL/dā>0)=14/24  ANTI-CLIFF ✓
+
+=== k=4  predicted(if carry=mechanism) max(ā)=0.750 ===
+  k=4 step 100  loss 1.219  acc 0.75  max(ā) 0.533  mean dL/dā -0.0169
+  k=4 step 200  loss 0.532  acc 0.91  max(ā) 0.541  mean dL/dā +0.0111
+  k=4 step 300  loss 0.165  acc 1.00  max(ā) 0.550  mean dL/dā -0.0015
+k=4 DONE  acc=1.00  max(ā)=0.550  mean dL/dā=+0.0039  n(dL/dā>0)=18/24  ANTI-CLIFF ✓
+
+--- faithful robustness check done ---

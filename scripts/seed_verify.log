@@ -1,0 +1,6 @@
+=== seed robustness (10 seeds, d=32/seq16), residual-verified fixed points, dense cross-check ===
+ρ=0.30  [9/10 with a fixed point; slow: []; non-convergent: [{:seed 6, :resid 0.095}]]
+        ρ_spec(mf)={:mean 0.841, :std 0.062, :min 0.716, :max 0.924}  ρ_spec(dense)={:mean 0.845, :std 0.062, :min 0.717, :max 0.928}  ‖J_G‖₂={:mean 1.882, :std 0.251, :min 1.419, :max 2.269}  [among those: ρ_spec>1: 0, ‖J_G‖₂>1: 9]
+ρ=0.90  [8/10 with a fixed point; slow: []; non-convergent: [{:seed 2, :resid 0.036} {:seed 3, :resid 6.7E-4}]]
+        ρ_spec(mf)={:mean 0.974, :std 0.009, :min 0.959, :max 0.986}  ρ_spec(dense)={:mean 0.976, :std 0.009, :min 0.959, :max 0.989}  ‖J_G‖₂={:mean 1.067, :std 0.028, :min 1.028, :max 1.117}  [among those: ρ_spec>1: 0, ‖J_G‖₂>1: 8]
+--- wrote scripts/seed_verify.edn ---

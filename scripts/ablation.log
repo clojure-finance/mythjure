@@ -1,0 +1,32 @@
+ablation on k=2 copy: T=8 seq=10 d=24 lr=0.00100000 steps=250
+
+=== A full+windowed ===
+  A full+windowed step  50  loss 2.3461  acc 0.53
+  A full+windowed step 100  loss 1.8122  acc 0.34
+  A full+windowed step 150  loss 1.5847  acc 0.47
+  A full+windowed step 200  loss 1.2919  acc 0.81
+  A full+windowed step 250  loss 0.9762  acc 0.91
+A full+windowed FINAL  acc=0.97  max(ā)=0.527
+
+=== B ablate+windowed ===
+  B ablate+windowed step  50  loss 2.6949  acc 0.03
+  B ablate+windowed step 100  loss 2.5951  acc 0.06
+  B ablate+windowed step 150  loss 2.7394  acc 0.00
+  B ablate+windowed step 200  loss 2.6909  acc 0.09
+  B ablate+windowed step 250  loss 2.6896  acc 0.03
+B ablate+windowed FINAL  acc=0.06  max(ā)=0.518
+
+=== C ablate+full-attn ===
+  C ablate+full-attn step  50  loss 2.1206  acc 1.00
+  C ablate+full-attn step 100  loss 1.4635  acc 1.00
+  C ablate+full-attn step 150  loss 0.9837  acc 1.00
+  C ablate+full-attn step 200  loss 0.5944  acc 1.00
+  C ablate+full-attn step 250  loss 0.3541  acc 1.00
+C ablate+full-attn FINAL  acc=1.00  max(ā)=0.516
+
+===== ABLATION SUMMARY (k=2 copy) =====
+A full+windowed       acc=0.97  max(ā)=0.527
+B ablate+windowed     acc=0.06  max(ā)=0.518
+C ablate+full-attn    acc=1.00  max(ā)=0.516
+A solves & B fails ⇒ nonlinear recurrence (block seeing H_t) does the cross-loop propagation.
+C solves ⇒ ablation isn't fatal; it specifically removes multi-loop propagation.

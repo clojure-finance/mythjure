@@ -1,0 +1,9 @@
+/.cpcache/
+/.clj-kondo/.cache/
+/.lsp/.cache/
+/.nrepl-port
+/target/
+.DS_Store
+*.class
+/attic/
+/.claude/

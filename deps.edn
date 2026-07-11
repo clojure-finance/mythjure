@@ -1,0 +1,18 @@
+{:paths ["src"]
+
+ ;; Base deps are intentionally empty. Everything here is pure clojure.core and
+ ;; needs nothing native, so the REPL always starts clean and the code is
+ ;; reproducible on any JVM with no BLAS/LAPACK or platform dependencies.
+ :deps {}
+
+ :aliases
+ {;; editor connects here:  clojure -M:nrepl  (--port 0 = auto-assign, see .nrepl-port)
+  :nrepl
+  {:extra-deps {nrepl/nrepl {:mvn/version "1.7.0"}}
+   :main-opts ["-m" "nrepl.cmdline" "--port" "0"]}
+
+  :test
+  {:extra-paths ["test"]
+   :extra-deps {io.github.cognitect-labs/test-runner
+                {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+   :main-opts ["-m" "cognitect.test-runner"]}}}

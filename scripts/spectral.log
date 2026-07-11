@@ -1,0 +1,54 @@
+=== spectral radius ρ_spec(J_G) vs operator norm ‖J_G‖₂ at the fixed point ===
+    (d=32, 4 heads, seq 16, random weights — same block as foundations §3)
+  ρ     ρ_spec    ρ_spec(dns) ‖J_G‖₂    probedLip  non-normality ‖J_G‖₂−ρ_spec
+  0.30  0.924     0.928       1.735     0.85       0.811
+  0.50  0.901     0.901       1.481     0.826      0.58
+  0.70  0.96      0.964       1.302     0.852      0.342
+  0.90  0.976     0.975       1.041     0.937      0.065
+  0.95  0.987     0.985       1.018     0.968      0.031
+  reading: ρ_spec<1 at every ρ ⇒ the loop is asymptotically contractive; 
+           ‖J_G‖₂>1 at low ρ ⇒ transient (non-normal) one-step amplification,
+           the datum behind the step-size rebound in the spiral figure. The
+           finite-difference probed Lip(G) under-estimates the true ‖J_G‖₂.
+
+=== input-injection scale ratio ‖H*+E‖/‖H*‖ across ρ (Appendix A) ===
+  ρ     ‖H*‖      ‖E‖       ‖H*+E‖/‖H*‖
+  0.30  32.625    21.846    1.226
+  0.50  45.981    21.846    1.128
+  0.70  77.41     21.846    1.051
+  0.90  266.607   21.846    1.005
+  0.95  544.376   21.846    1.002
+  reading: ratio→1 as ρ→1 (‖H*‖≫‖E‖); the ~23% inflation at ρ=0.3 is
+           consistent in sign with the low-carry softening of the true C/F
+           (2.33 vs peak 2.78); the probe-table dip to 0.87 is additionally
+           confounded by the probe's own ~2.6x underestimate (App. A).
+
+=== TRUE C/F = ‖J_f‖₂/(1−ρ) via power iteration (vs finite-diff probe) ===
+  ρ     Lip(f)true  Lip(f)probe F         balance   C/F true
+  0.30  1.628       0.608       22.837    1.0       2.325
+  0.50  1.233       0.463       22.991    1.0       2.467
+  0.70  0.833       0.303       23.223    1.0       2.776
+  0.90  0.239       0.093       26.661    1.0       2.391
+  0.95  0.119       0.046       27.219    1.0       2.381
+  reading: the probe under-estimates ‖J_f‖₂ ≈2.6× at every ρ, so the
+           implied C/F≈1 of tab:directional-margin is a PROBE ARTIFACT;
+           the true C/F is ≈2.5 (roughly flat), NOT ≈1. C/F is a constant
+           (the derivation's structural claim) but its value is ≈2.5, so
+           the operator-norm bound ρ+Lip(f)=ρ+2.5(1−ρ) runs 2.5→1, riding
+           the boundary only as ρ→1; ‘flat near 1’ lives in ρ_spec, not here.
+
+=== seed robustness: ρ_spec across 10 random-weight seeds (matrix-free) ===
+  ρ     ρ_spec mean±std  margin    ρ_spec>1  non-convergent seeds
+  0.30  0.841±0.062      0.159     0/9      [6]
+  0.50  0.896±0.046      0.104     0/9      [6]
+  0.70  0.947±0.033      0.053     0/8      [2 3]
+  0.90  0.974±0.009      0.026     0/8      [2 3]
+  0.95  0.988±0.004      0.012     0/8      [2 3]
+  reading: every seed that reaches a fixed point is contractive there
+           (ρ_spec<1), but the margin collapses low→high carry and a
+           minority of seeds (1–2/10 at every carry tested) never reach
+           a fixed point at all: the diagonal constraint ρ(Ā)<1 does NOT
+           certify convergence of the full recurrence. (Dense cross-check
+           + ‖J_G‖₂ per seed at ρ=0.3,0.9: scripts/seed_verify.clj.)
+
+--- spectral done (wrote scripts/spectral.edn) ---

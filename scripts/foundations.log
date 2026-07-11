@@ -1,0 +1,41 @@
+=== §3  dynamics: unconstrained carry explodes, Parcae carry stays bounded ===
+  unconstrained ρ=1.300  ‖h‖:              ▁▁▂▂▃▄▆█  final=715.8
+  constrained   ρ=0.368  ‖h‖: █▃▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁  final=0.45
+
+=== §4.1 nonlinear R(h,e)=tanh(Wh+e) in the loop ===
+  bounded R can't save an unconstrained carry: {:constrained-0.368 2.942751805760303, :unconstrained-1.1 763.0029518573873, :unconstrained-1.3 195690.8103315542}
+  Banach contraction threshold (gain → converges?):
+    gain 0.050  final-step 0.000  converges
+    gain 0.100  final-step 0.000  converges
+    gain 0.150  final-step 1.118e-13  converges
+    gain 0.200  final-step 4.767e-09  converges
+    gain 0.250  final-step 0.0002557  converges
+    gain 0.300  final-step 0.3778  wanders
+    gain 0.354  final-step 0.7208  wanders
+  spiral: step sizes [2.437 1.1228 0.7205 0.613 0.5075 0.3395 0.2012 0.1581 0.1765 0.1903 0.184 0.1614 0.1296 0.0965 0.0708 0.0611]
+          cos-vs-first [1.0 0.444 -0.291 -0.574 -0.598 -0.629 -0.611 -0.31 0.009 0.165 0.251 0.319 0.393 0.475 0.517 0.39]
+  Banach: ‖W‖_σ=5.390 (unit gain, seed 42) ⇒ predicted convergence for gain < 0.117
+  spiral PCA (first 4 of 28 pts): ([-2.3978 -1.6901] [-2.1683 0.643] [-1.3083 1.2066] [-0.7023 1.0064])
+
+=== §4–5  Lipschitz diagnostics (d=32, 4 heads, seq 16, random weights) ===
+  Lip(block) vs activation scale (small ‖H‖ = implosion danger zone):
+    c=0.1  ‖H‖=2.185   Lip-block=16.655 Lip-incr=16.564
+    c=0.25 ‖H‖=5.461   Lip-block=6.31   Lip-incr=6.191
+    c=0.5  ‖H‖=10.923  Lip-block=3.082  Lip-incr=2.873
+    c=1.0  ‖H‖=21.846  Lip-block=1.703  Lip-incr=1.354
+    c=2.0  ‖H‖=43.692  Lip-block=1.203  Lip-incr=0.65
+    c=5.0  ‖H‖=109.229 Lip-block=1.047  Lip-incr=0.252
+    c=10.0 ‖H‖=218.458 Lip-block=1.018  Lip-incr=0.124
+  gated contraction per scalar carry ρ (margin = 1 − Lip(G)):
+    ρ=0.30  Lip(G)=0.85   margin=0.15   ρ+Lip(incr)=0.908
+    ρ=0.50  Lip(G)=0.826  margin=0.174  ρ+Lip(incr)=0.963
+    ρ=0.70  Lip(G)=0.852  margin=0.148  ρ+Lip(incr)=1.003
+    ρ=0.90  Lip(G)=0.937  margin=0.063  ρ+Lip(incr)=0.993
+    ρ=0.95  Lip(G)=0.968  margin=0.032  ρ+Lip(incr)=0.996
+  per-channel carry profiles — max governs, not mean:
+    one-slow     {:Lip-G-random 0.546, :Lip-G-robust 0.989, :H*-rms 20.664, :worst-channel 0, :converged? true, :settle-resid 9.975055658399014E-10, :carry-mean 0.515, :carry-max 0.99, :margin 0.011}
+    ramp         {:Lip-G-random 0.783, :Lip-G-robust 0.99, :H*-rms 23.217, :worst-channel 31, :converged? true, :settle-resid 9.977160537758242E-10, :carry-mean 0.745, :carry-max 0.99, :margin 0.01}
+    uniform-0.5  {:Lip-G-random 0.681, :Lip-G-robust 0.826, :H*-rms 2.032, :worst-channel 5, :converged? true, :settle-resid 9.7451555399548E-10, :carry-mean 0.5, :carry-max 0.5, :margin 0.174}
+    uniform-99   {:Lip-G-random 0.991, :Lip-G-robust 0.994, :H*-rms 122.197, :worst-channel 13, :converged? true, :settle-resid 9.993005543861912E-10, :carry-mean 0.99, :carry-max 0.99, :margin 0.006}
+
+--- foundations done (wrote scripts/foundations.edn) ---
