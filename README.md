@@ -66,6 +66,22 @@ single experiment: `clojure -M scripts/<name>.clj`.
 | `faithful_check.clj` | §7.4 note (Parcae relationship, §1) | Central finding (§7.4) holds under the **faithful** Parcae architecture (learnable Δ + B̄e + prelude LN): ā flat, `dL/dā` anti-cliff at k=2,4. |
 | `diagonal_memory.clj` | §7.6 (Tab. 11, Fig. 6) | **Boundary of the "free constraint":** on an axis-aligned per-channel task, the carry *is* recruited — learned ā tracks per-channel targets (corr 0.92). Block subsumes carry only for cross-channel/position tasks. |
 
+## Torch backend (post-paper development)
+
+Everything above — and every number in the paper — runs on the dependency-free
+pure-Clojure implementation. Since `paper-v1`, the repo also carries an
+optional **PyTorch backend** behind the same function signatures, for speed
+(~86× on a full training step at paper scale, CPU-only): `mythjure.torch.*` is
+a thin Clojure façade over [libpython-clj](https://github.com/clj-python/libpython-clj)
+(no autograd — the same hand-derived VJPs, translated to tensor ops), and
+`block-torch` / `backprop-torch` / `model-torch` / `train-torch` mirror their
+pure namespaces one-to-one. The pure implementation remains the correctness
+oracle: the torch backend's forward, gradients, and full Adam training
+trajectories are pinned to it by tests (`clojure -M:test-torch`, float64,
+agreement ≤1e-12; needs a Python with `torch` installed — see
+`mythjure.torch.core` for setup, incl. the pyenv shared-library note). The
+plain `clojure -M:test` suite and base classpath stay dependency-free.
+
 ## REPL
 
 Start an nREPL server (the `:nrepl` alias binds an auto-assigned port and writes
