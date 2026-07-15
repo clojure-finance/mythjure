@@ -122,6 +122,22 @@
         (try (py/->jvm (call torch "is_tensor" x))
              (catch Exception _ false)))))
 
+(defn py-dict
+  "Convert a Clojure map to a real Python dict (e.g. for load_state_dict —
+  the auto-bridged JVM map is rejected by torch's type checks)."
+  [m]
+  (py/->py-dict m))
+
+(defn py-keys
+  "Keys of a Python mapping (dict / OrderedDict) as a vector of strings.
+  The keys() view object does NOT auto-convert across the bridge (it comes
+  back as an opaque pointer) — it must be materialized with builtins list()
+  first."
+  [obj]
+  (assert-pyobj obj "py-keys")
+  (mapv str (py/->jvm (py/call-attr (py/import-module "builtins") "list"
+                                    (py/call-attr obj "keys")))))
+
 (defn raw-call
   "Sanctioned escape hatch for anything the façade doesn't cover yet.
   Prefer adding a named façade fn once a call site stabilizes."
