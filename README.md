@@ -101,6 +101,19 @@ today, no wrapper needed; and `require-python` for docstring-level discovery
 at the REPL — see the namespace docstring for the promotion policy between
 tiers).
 
+The first post-paper experiment built on this speed is
+`scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
+a budget-guarded width ladder for the paper's §5.3 fixed-point/spectral
+claims: d ∈ {32, 64, 128, 256} at head-dim 8 (heads = d/8, d-ff = 4d),
+10 seeds × ρ ∈ {0.3, 0.9}, the paper's schedules, with the d=32 rung diffed
+against the recorded `seed_verify.edn` as a reproduce-the-paper control.
+Preliminary finding (n=10 seeds/cell): the qualitative story is width-robust
+(non-normality gap, non-convergent seed minority, C/F drifting ≈2.3→2.9),
+the ρ=0.3 margin plateaus near 0.10, and the ρ=0.9 spectral margin shrinks
+roughly 2× per doubling of d — zero within estimator noise (~0.005) at
+d=256, where residual-verified fixed points sit at marginal stability.
+Outputs stay untracked like all script outputs.
+
 ### Torch backend setup
 
 You need a Python 3 built with `--enable-shared` that can `import torch`
