@@ -76,15 +76,24 @@ Everything above — and every number in the paper — runs on the dependency-fr
 pure-Clojure implementation. Since `paper-v1`, the repo also carries an
 optional **PyTorch backend** behind the same function signatures, for speed
 (~86× on a full training step at paper scale, CPU-only): `mythjure.torch.*` is
-a thin Clojure façade over [libpython-clj](https://github.com/clj-python/libpython-clj)
-(no autograd — the same hand-derived VJPs, translated to tensor ops), and
-`block-torch` / `backprop-torch` / `model-torch` / `train-torch` mirror their
-pure namespaces one-to-one. The pure implementation remains the correctness
-oracle: the torch backend's forward, gradients, and full Adam training
-trajectories are pinned to it by tests (`clojure -M:test-torch`, float64,
-agreement ≤1e-12; needs a Python with `torch` installed — see
-`mythjure.torch.core` for setup, incl. the pyenv shared-library note). The
-plain `clojure -M:test` suite and base classpath stay dependency-free.
+a thin Clojure façade over [libpython-clj](https://github.com/clj-python/libpython-clj),
+and `block-torch` / `backprop-torch` / `model-torch` / `train-torch` mirror
+their pure namespaces one-to-one using the same hand-derived VJPs translated
+to tensor ops — no autograd anywhere in the experiment path. The pure
+implementation remains the correctness oracle: the torch backend's forward,
+gradients, and full Adam training trajectories are pinned to it by tests
+(`clojure -M:test-torch`, float64, agreement ≤1e-12; needs a Python with
+`torch` installed — see `mythjure.torch.core` for setup, incl. the pyenv
+shared-library note). The plain `clojure -M:test` suite and base classpath
+stay dependency-free.
+
+Beyond the experiment mirrors, the façade carries two general-purpose
+surfaces: `mythjure.torch.autograd` (opt-in reverse-mode autograd —
+`backward!`, `no-grad`, param-map grad helpers — validated leaf-for-leaf to
+machine ε against the manual VJPs across every model mode) and
+`mythjure.torch.module` (`nn.Module`/`state_dict` interop: a Python module's
+weights become a nested Clojure param map, loadable/savable and trainable
+end-to-end through the façade's optimizer and autograd helpers).
 
 ## REPL
 
@@ -106,7 +115,9 @@ Then, in the REPL (or via your editor):
 ## deps.edn aliases
 
 - `:nrepl` — nREPL server on an auto-assigned port (see `.nrepl-port`), for editor connection.
-- `:test` — cognitect test-runner.
+- `:test` — cognitect test-runner (pure suite only).
+- `:torch` — adds libpython-clj for the optional PyTorch backend (`clojure -M:nrepl:torch`).
+- `:test-torch` — runs the pure and torch suites together.
 
 The base classpath is dependency-free on purpose: the whole project is pure
 `clojure.core`, needs nothing native, and the REPL always starts clean.
