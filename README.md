@@ -94,11 +94,12 @@ machine ε against the manual VJPs across every model mode),
 weights become a nested Clojure param map, loadable/savable and trainable
 end-to-end through the façade's optimizer and autograd helpers), and
 `mythjure.torch.op` (op coverage in three tiers: curated named wrappers
-declared as one-line `defop` table rows with explicit coercion/return specs
-— every row is enforced-tested; a generic `torch-fn`/`nn-fn`/`method`
-dispatch surface that reaches any torch op today, no wrapper needed; and
-`require-python` for docstring-level discovery at the REPL — see the
-namespace docstring for the promotion policy between tiers).
+declared as one-line `defop` table rows with explicit coercion, return, and
+aliasing/mutation specs — every row is enforced-tested; a generic
+`torch-fn`/`nn-fn`/`method` dispatch surface that reaches any torch op
+today, no wrapper needed; and `require-python` for docstring-level discovery
+at the REPL — see the namespace docstring for the promotion policy between
+tiers).
 
 ### Torch backend setup
 
@@ -147,6 +148,35 @@ JDK 21 and `pip install torch --index-url https://download.pytorch.org/whl/cpu`,
 and run the uberjar — no env vars needed, discovery finds the image's Python.
 For GPU work later, swap in a CUDA-enabled torch wheel/base image; the bridge
 is device-agnostic.
+
+### Mutation & views
+
+The façade keeps torch's aliasing semantics faithfully — some ops return
+**views** that share storage with their input (`transpose`, `permute`,
+`narrow`, `split`/`chunk`/`unbind`, `broadcast-to`, `squeeze`/`unsqueeze`),
+and some alias *depending on their input*: `reshape`/`flatten` are views only
+when the input is contiguous (silent copies otherwise), `einsum` on
+pure-permutation equations lowers to a view. Since aliasing is only
+observable through mutation, the convention is:
+
+- **No unmarked op mutates its arguments.** Mutation is opt-in via the
+  `!`-suffixed ops (`add!`, `mul!`, `clamp!`, `zero!`, `fill!`, …). If you
+  never call a `!`-op, you have value semantics.
+- **`!`-ops are guarded.** Mutating an autograd *intermediate* (a tensor with
+  a `grad_fn`) throws a readable error at the mutation site — instead of
+  torch's version-counter error later at `backward!`, far from the bug. Pass
+  `:unsafe true` to bypass when you know no backward will run. Leaves keep
+  torch's own rules: refused under grad mode, legal under `no-grad` (the
+  optimizer pattern).
+- **`clone` breaks aliasing, `contiguous` normalizes layout, `data-ptr`
+  diagnoses sharing.** `mythjure.torch.tensor/aliasing-table` is the
+  greppable record of every op that can alias; each claim is empirically
+  pinned by `torch_mutation_test`, so a torch upgrade that changes an op's
+  aliasing fails a test instead of corrupting weights.
+- **Detaching is not copying.** `autograd/detach` and `module/state-dict`
+  cut the autograd *graph*, not the *storage* — their results still share
+  memory with the live tensors, and (having no `grad_fn`) are invisible to
+  the `!`-guard. `clone` the values if you need a real snapshot.
 
 ## REPL
 

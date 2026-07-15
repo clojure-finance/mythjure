@@ -4,7 +4,16 @@
   Conventions mirror mythjure.linalg where they overlap: a matrix is
   [rows × cols], `transpose` with no dims swaps the last two. Constructors
   default to core/*device* and :float32; pass :dtype :float64 when comparing
-  against the pure-Clojure oracle."
+  against the pure-Clojure oracle.
+
+  Mutation rules (direction doc §5.1 item 2): no unmarked op in this
+  namespace mutates its arguments — mutation is opt-in via the !-suffixed
+  ops, which are guarded against corrupting autograd graphs (op/defop).
+  Torch aliasing is kept faithfully: some ops return VIEWS sharing the
+  input's storage, so a ! op can write through them into the source. The
+  rule of thumb: no !, no aliasing bugs. `aliasing-table` (bottom of this
+  file) is the greppable record of which ops can alias; `clone` breaks
+  aliasing, `data-ptr` diagnoses it."
   (:refer-clojure :exclude [get cat abs flatten chunk])
   (:require [mythjure.torch.core :as core]
             [mythjure.torch.op :as op :refer [defop]]))
@@ -68,7 +77,19 @@
   (let [x (core/->jvm (core/call (core/call (core/call t "detach") "cpu") "tolist"))]
     (if (sequential? x) (clojure.walk/postwalk #(if (sequential? %) (vec %) %) x) x)))
 
-(defn to-device [t device] (core/call t "to" device))
+(defn to-device
+  "Move t to a device. Returns t ITSELF when it is already there (torch's
+  .to is a no-op then) — a copy only when a move actually happens."
+  [t device]
+  (core/call t "to" device))
+
+(defn data-ptr
+  "Address of the first element of t's storage, as a Clojure long — the
+  aliasing diagnostic: equal data-ptrs ⇒ shared buffer. The converse does
+  NOT hold (an offset view, e.g. a mid-tensor narrow, overlaps its base at
+  a different address), so unequal ptrs prove nothing."
+  [t]
+  (item (core/call t "data_ptr")))
 
 ;; ---------------------------------------------------------------------------
 ;; Elementwise + linear algebra
@@ -85,11 +106,17 @@
 (defn neg [t] (core/call core/torch "neg" t))
 
 (defn transpose
-  "Swap two dims; with no dims, the last two (matrix transpose)."
+  "Swap two dims; with no dims, the last two (matrix transpose).
+  Returns a VIEW — shares storage with t."
   ([t] (core/call core/torch "transpose" t -2 -1))
   ([t d0 d1] (core/call core/torch "transpose" t d0 d1)))
 
-(defn reshape [t shape] (core/call t "reshape" (core/py-tuple shape)))
+(defn reshape
+  "New shape, same elements. A VIEW when t is contiguous, a silent COPY
+  otherwise (torch semantics — aliasing is decided by t's memory layout at
+  runtime, not by this op). `clone` if you need guaranteed independence."
+  [t shape]
+  (core/call t "reshape" (core/py-tuple shape)))
 
 (defn norm
   "Frobenius/L2 norm as a Clojure double."
@@ -119,8 +146,8 @@
 ;; Shape surgery / indexing / masking (attention support)
 ;; ---------------------------------------------------------------------------
 
-(defn unsqueeze [t dim] (core/call t "unsqueeze" dim))
-(defn squeeze [t dim] (core/call t "squeeze" dim))
+(defn unsqueeze "Insert a size-1 dim (a view)." [t dim] (core/call t "unsqueeze" dim))
+(defn squeeze "Drop a size-1 dim (a view)." [t dim] (core/call t "squeeze" dim))
 
 (defn index-select
   "Rows (dim 0) / columns (dim 1) picked by an int64 index tensor."
@@ -168,12 +195,16 @@
 ;; -- shape combinators --------------------------------------------------------
 (defop cat          "Concatenate tensors along :dim (default 0)."             [tensors] {:coerce {0 :list}})
 (defop stack        "Stack tensors along a NEW dim :dim (default 0)."         [tensors] {:coerce {0 :list}})
-(defop split        "Split along :dim into chunks of `size` (int, or vector of sizes); returns a vector of tensors." [t size] {:ret :vec})
-(defop chunk        "Split along :dim into `n` roughly equal chunks; returns a vector of tensors." [t n] {:ret :vec})
-(defop unbind       "Remove :dim (default 0), returning its slices as a vector of tensors." [t] {:ret :vec})
-(defop permute      "Reorder dims: (permute t [2 0 1])."                      [t dims] {:coerce {1 :tuple}})
-(defop flatten      "Flatten dims :start_dim..:end_dim (defaults 0..-1) into one." [t] {})
-(defop broadcast-to "Broadcast t to `shape` (expanded view, no copy)."        [t shape] {:coerce {1 :tuple}})
+(defop split        "Split along :dim into chunks of `size` (int, or vector of sizes); returns a vector of VIEWS." [t size] {:ret :vec :aliasing :view})
+(defop chunk        "Split along :dim into `n` roughly equal chunks; returns a vector of VIEWS." [t n] {:ret :vec :aliasing :view})
+(defop unbind       "Remove :dim (default 0), returning its slices as a vector of VIEWS." [t] {:ret :vec :aliasing :view})
+(defop permute      "Reorder dims: (permute t [2 0 1]). A view."              [t dims] {:coerce {1 :tuple} :aliasing :view})
+(defop flatten      "Flatten dims :start_dim..:end_dim (defaults 0..-1) into one. View when t is contiguous, copy otherwise (like reshape)." [t] {:aliasing :input-dependent})
+(defop broadcast-to "Broadcast t to `shape` (expanded view, no copy)."        [t shape] {:coerce {1 :tuple} :aliasing :view})
+
+;; -- copies / layout ----------------------------------------------------------
+(defop clone      "Deep copy: fresh storage, breaks all aliasing. Differentiable (taped as identity) — `autograd/detach` for the opposite trade." [t] {:aliasing :copy})
+(defop contiguous "t in contiguous layout: returns t ITSELF when already contiguous, a fresh copy otherwise." [t] {:target :method :aliasing :input-dependent})
 
 ;; -- reductions ---------------------------------------------------------------
 (defop mean     "Mean over all elements, or over :dim (:keepdim)."            [t] {})
@@ -210,8 +241,50 @@
 (defop masked-select "1-D tensor of t's entries where the bool mask is true." [t mask] {})
 (defop allclose      "True if all entries agree within :rtol/:atol."          [a b] {})
 
+;; -- in-place (the ONLY mutating ops in the façade; ns docstring has the rules;
+;;    all guard-throw on autograd intermediates, take :unsafe true to bypass,
+;;    and return their mutated target for threading) --------------------------
+(defop add!   "In-place t += other (elementwise or broadcast)."               [t other] {:target :method})
+(defop sub!   "In-place t -= other."                                          [t other] {:target :method})
+(defop mul!   "In-place t *= other."                                          [t other] {:target :method})
+(defop div!   "In-place t /= other."                                          [t other] {:target :method})
+(defop clamp! "In-place clamp into [:min, :max] (either may be omitted)."     [t] {:target :method})
+(defop zero!  "In-place fill with zeros."                                     [t] {:target :method})
+(defop fill!  "In-place fill with a scalar."                                  [t value] {:target :method})
+
 ;; einsum is variadic, so it stays a hand-written tier-2 call:
 (defn einsum
-  "torch.einsum: (einsum \"ij,jk->ik\" a b)."
+  "torch.einsum: (einsum \"ij,jk->ik\" a b). Contractions allocate, but a
+  pure-permutation equation (\"ij->ji\", even \"ij->ij\") lowers to a VIEW."
   [equation & tensors]
   (op/torch-fn "einsum" (cons equation tensors)))
+
+;; ---------------------------------------------------------------------------
+;; Aliasing table — which ops can return a tensor sharing storage with an
+;; input (or mutate one). Everything NOT listed returns fresh storage.
+;; torch_mutation_test pins every claim empirically (data-ptr / mutation
+;; witnesses), so a torch upgrade that changes an op's aliasing fails a test.
+;; ---------------------------------------------------------------------------
+
+(def hand-written-aliasing
+  "Aliasing facts for the hand-written (non-defop) ops in this namespace;
+  defop rows carry theirs as :aliasing in op/op-registry."
+  '{transpose :view
+    narrow    :view
+    squeeze   :view
+    unsqueeze :view
+    reshape   :input-dependent
+    to-device :input-dependent
+    einsum    :input-dependent})
+
+(defn aliasing-table
+  "Every op in this namespace whose result can share storage with (or
+  mutates) an input → :view | :input-dependent | :copy | :in-place.
+  Merges the defop rows' :aliasing declarations with the hand-written map."
+  []
+  (into hand-written-aliasing
+        (keep (fn [[sym row]]
+                (when (and (= "mythjure.torch.tensor" (namespace sym))
+                           (:aliasing row))
+                  [(symbol (name sym)) (:aliasing row)])))
+        @op/op-registry))

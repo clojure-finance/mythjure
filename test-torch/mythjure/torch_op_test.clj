@@ -220,7 +220,39 @@
 
    'mythjure.torch.tensor/allclose
    #(and (true? (t/allclose (V) (V)))
-         (false? (t/allclose (V) (t/zeros-like (V)))))})
+         (false? (t/allclose (V) (t/zeros-like (V)))))
+
+   ;; copies / layout + in-place — the aliasing/guard semantics themselves
+   ;; are pinned in torch_mutation_test; these entries keep the
+   ;; every-row-has-an-example invariant with a basic value check.
+   'mythjure.torch.tensor/clone
+   #(let [x (V) c (t/clone x)]
+      (and (= (t/to-clj x) (t/to-clj c))
+           (not= (t/data-ptr x) (t/data-ptr c))))
+
+   'mythjure.torch.tensor/contiguous
+   #(= [[1.0 3.0] [-2.0 -4.0]] (t/to-clj (t/contiguous (t/transpose (X)))))
+
+   'mythjure.torch.tensor/add!
+   #(let [x (V)] (t/add! x 1.0) (= [2.0 3.0 4.0 5.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/sub!
+   #(let [x (V)] (t/sub! x 1.0) (= [0.0 1.0 2.0 3.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/mul!
+   #(let [x (V)] (t/mul! x 2.0) (= [2.0 4.0 6.0 8.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/div!
+   #(let [x (V)] (t/div! x 2.0) (= [0.5 1.0 1.5 2.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/clamp!
+   #(let [x (V)] (t/clamp! x :min 2.0 :max 3.0) (= [2.0 2.0 3.0 3.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/zero!
+   #(let [x (V)] (t/zero! x) (= [0.0 0.0 0.0 0.0] (t/to-clj x)))
+
+   'mythjure.torch.tensor/fill!
+   #(let [x (V)] (t/fill! x 7.0) (= [7.0 7.0 7.0 7.0] (t/to-clj x)))})
 
 (deftest every-tensor-op-has-a-passing-example
   (let [registered (->> (keys @op/op-registry)

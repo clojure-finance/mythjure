@@ -43,10 +43,11 @@
   [m & inputs]
   (apply core/call m "__call__" inputs))
 
-(defn to-dtype
-  "Cast every parameter/buffer of m: (to-dtype m :float64). In place;
-  returns m. Modules construct as float32 — cast before comparing against
-  the float64 oracle."
+(defn to-dtype!
+  "Cast every parameter/buffer of m: (to-dtype! m :float64). IN PLACE —
+  nn.Module.to mutates the module (unlike Tensor.to) — and returns m.
+  Modules construct as float32 — cast before comparing against the float64
+  oracle."
   [m dtype-kw]
   (core/call m "to" (core/dtype dtype-kw)))
 
@@ -59,7 +60,11 @@
 
 (defn state-dict
   "Flat {\"dotted.key\" tensor} of a module's parameters and buffers.
-  Detached copies by default; :keep-vars true → the live tensors."
+  Detached by default; :keep-vars true → the live autograd tensors.
+  CAUTION: detached ≠ independent — torch's state_dict detaches the GRAPH,
+  not the STORAGE, so even the default tensors share memory with the live
+  weights: a !-op on one writes into the module (and no guard can see it —
+  detached tensors have no grad_fn). tensor/clone each value for a snapshot."
   [m & {:keys [keep-vars]}]
   (let [sd (if keep-vars
              (core/call-kw m "state_dict" [] {:keep_vars true})

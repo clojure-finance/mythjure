@@ -7,6 +7,9 @@
   1. CURATED — named fns in mythjure.torch.{tensor,nn,…}, hand-written or
      declared with `defop` below. Documented, tested, semantics pinned where
      torch's defaults diverge from the oracle (e.g. nn/gelu's tanh pin).
+     Mutation is opt-in and !-marked at this tier (guarded in-place rows,
+     :aliasing declared per op — see the defop docstring and the mutation
+     rules in mythjure.torch.tensor's ns docstring).
 
   2. GENERIC — `torch-fn` / `nn-fn` / `method` here call ANY torch op by
      name today, no wrapper needed. Coercion is EXPLICIT at this tier: wrap
@@ -105,6 +108,27 @@
     :vec  (core/py-vec r)
     nil   r))
 
+(defn -guard-inplace!
+  "Internal: refuse in-place mutation of an autograd INTERMEDIATE (a tensor
+  with a grad_fn). Some backward pass may have saved that tensor; mutating it
+  makes backward! fail with torch's version-counter error — far from the
+  mutation. This guard moves the error to the mutation site. Leaves are not
+  guarded: torch itself refuses in-place on a requires-grad leaf under grad
+  mode, and allows it under no-grad (the optimizer pattern)."
+  [obj op-name unsafe?]
+  (when-not unsafe?
+    (when-let [gf (core/attr obj "grad_fn")]
+      (let [nm   (core/attr (core/attr gf "__class__") "__name__")
+            node (if (string? nm) nm (core/->jvm nm))]
+        (throw (ex-info (str op-name " would mutate an autograd intermediate in "
+                             "place (grad_fn " node ") — a backward pass that "
+                             "saved this tensor would fail with torch's "
+                             "version-counter error at backward!, far from "
+                             "here. Clone first (mythjure.torch.tensor/clone) "
+                             "and mutate the copy, or pass :unsafe true if no "
+                             "backward will traverse the current graph.")
+                        {:op op-name :grad-fn node}))))))
+
 (defonce op-registry
   ;; qualified op symbol → its defop spec; the greppable table, and what the
   ;; table-driven test iterates to enforce every-registered-op-is-tested.
@@ -125,6 +149,13 @@
   argv: fixed positional params (symbols only); every generated fn also
   accepts trailing kwargs.
 
+  A trailing ! in the op name declares an IN-PLACE op (py-name munges to the
+  trailing-underscore torch form, e.g. add! → add_): the generated fn mutates
+  its first arg, returns it (torch returns self — threads), and guard-throws
+  at the call site when the target is an autograd intermediate (see
+  -guard-inplace!). The caller-only kwarg :unsafe true bypasses the guard and
+  is stripped before dispatch.
+
   spec keys:
     :target     :torch (default) → torch.<py-name>
                 :nn              → torch.nn.functional.<py-name>
@@ -135,16 +166,34 @@
                 semantic pins live here (e.g. gelu's {:approximate \"tanh\"})
     :ret        nil (live pyobject, default)
                 :item (0-dim tensor → Clojure number)
-                :vec  (python tuple → vector of live pyobjects)"
+                :vec  (python tuple → vector of live pyobjects)
+    :aliasing   whether the result can SHARE STORAGE with an input; absent =
+                fresh storage (the torch default for out-of-place ops)
+                :view            (always shares)
+                :input-dependent (view or copy, decided at runtime — e.g.
+                                  reshape/flatten by contiguity)
+                :copy            (explicitly fresh, e.g. clone)
+                :in-place        (set automatically for ! ops)"
   [op-name doc argv spec]
   (assert (vector? argv) "defop: argv must be a vector")
   (assert (every? symbol? argv) "defop: argv is fixed positional symbols only")
-  (let [{:keys [target py-name coerce default-kw ret]
-         :or   {target :torch}} spec]
-    (assert (every? #{:target :py-name :coerce :default-kw :ret} (keys spec))
+  (let [{:keys [target py-name coerce default-kw ret aliasing]
+         :or   {target :torch}} spec
+        in-place? (str/ends-with? (name op-name) "!")
+        aliasing  (if in-place? :in-place aliasing)]
+    (assert (every? #{:target :py-name :coerce :default-kw :ret :aliasing} (keys spec))
             (str "defop " op-name ": unknown spec key"))
     (assert (#{:torch :nn :method} target) (str "defop " op-name ": bad :target"))
     (assert (contains? #{nil :item :vec} ret) (str "defop " op-name ": bad :ret"))
+    (assert (contains? #{nil :view :input-dependent :copy :in-place} aliasing)
+            (str "defop " op-name ": bad :aliasing"))
+    (assert (or (not in-place?) (contains? #{nil :in-place} (:aliasing spec)))
+            (str "defop " op-name ": a ! op is :aliasing :in-place by definition"))
+    (assert (or (not in-place?) (seq argv))
+            (str "defop " op-name ": an in-place op needs a target arg"))
+    (assert (or (not in-place?) (not (contains? coerce 0)))
+            (str "defop " op-name ": :coerce on the mutation target — the "
+                 "guard would check the uncoerced value"))
     (assert (every? #{:tuple :list :dict} (vals coerce))
             (str "defop " op-name ": bad :coerce kind"))
     (assert (every? #(< -1 % (count argv)) (keys coerce))
@@ -160,11 +209,18 @@
                          `(-module! core/F "torch.nn.functional")
                          `(-module! core/torch "torch"))
                        coerced])
-          kw-expr (if default-kw `(merge ~default-kw ~kw-sym) kw-sym)]
-      `(do (defn ~op-name ~doc [~@argv & {:as ~kw-sym}]
-             (-ret (-dispatch ~obj ~py-name ~pos ~kw-expr) ~ret))
+          kw-expr  (if default-kw `(merge ~default-kw ~kw-sym) kw-sym)
+          dispatch `(-ret (-dispatch ~obj ~py-name ~pos ~kw-expr) ~ret)
+          body     (if in-place?
+                     `(let [unsafe# (:unsafe ~kw-sym)
+                            ~kw-sym (not-empty (dissoc ~kw-sym :unsafe))]
+                        (-guard-inplace! ~(first argv) ~(str op-name) unsafe#)
+                        ~dispatch)
+                     dispatch)]
+      `(do (defn ~op-name ~doc [~@argv & {:as ~kw-sym}] ~body)
            (swap! op-registry assoc
                   '~(symbol (str (ns-name *ns*)) (str op-name))
                   {:py-name ~py-name :target ~target
-                   :coerce ~coerce :default-kw ~default-kw :ret ~ret})
+                   :coerce ~coerce :default-kw ~default-kw :ret ~ret
+                   :aliasing ~aliasing :in-place? ~in-place?})
            (var ~op-name)))))

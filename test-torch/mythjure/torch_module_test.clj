@@ -36,7 +36,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest linear-module-matches-facade-math
-  (let [lin (mod/to-dtype (mod/make "Linear" [5 3]) :float64)
+  (let [lin (mod/to-dtype! (mod/make "Linear" [5 3]) :float64)
         x   (t/randn [4 5] :dtype :float64)
         {:keys [weight bias]} (mod/params lin)]
     (is (< (tensor-mad (mod/call lin x)
@@ -46,7 +46,7 @@
 (deftest layer-norm-module-matches-facade-layer-norm
   ;; load non-trivial gamma/beta from a nested Clojure map, then the module
   ;; must equal the (oracle-pinned) functional façade op with the same weights
-  (let [ln  (mod/to-dtype (mod/make "LayerNorm" [4]) :float64)
+  (let [ln  (mod/to-dtype! (mod/make "LayerNorm" [4]) :float64)
         g   [1.1 0.9 1.3 0.7]
         b   [0.2 -0.1 0.0 0.4]
         x   (t/randn [6 4] :dtype :float64)]
@@ -60,10 +60,10 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- mlp []
-  (mod/to-dtype (mod/sequential [(mod/make "Linear" [3 8])
-                                 (mod/make "GELU" [] {:approximate "tanh"})
-                                 (mod/make "Linear" [8 1])])
-                :float64))
+  (mod/to-dtype! (mod/sequential [(mod/make "Linear" [3 8])
+                                  (mod/make "GELU" [] {:approximate "tanh"})
+                                  (mod/make "Linear" [8 1])])
+                 :float64))
 
 (deftest state-dict-nests-numeric-segments
   (let [sd (mod/state-dict (mlp))
@@ -79,14 +79,14 @@
     (is (every? #(zero? (tensor-mad (sd %) (rt %))) (keys sd)))))
 
 (deftest load-state-dict-transfers-weights
-  (let [a (mod/to-dtype (mod/make "Linear" [5 3]) :float64)
-        b (mod/to-dtype (mod/make "Linear" [5 3]) :float64)
+  (let [a (mod/to-dtype! (mod/make "Linear" [5 3]) :float64)
+        b (mod/to-dtype! (mod/make "Linear" [5 3]) :float64)
         x (t/randn [4 5] :dtype :float64)]
     (mod/load-state-dict! b (mod/params a))
     (is (zero? (tensor-mad (mod/call a x) (mod/call b x))))))
 
 (deftest strict-load-raises-on-missing-keys
-  (let [b (mod/to-dtype (mod/make "Linear" [5 3]) :float64)]
+  (let [b (mod/to-dtype! (mod/make "Linear" [5 3]) :float64)]
     (is (thrown? Exception
                  (mod/load-state-dict! b {:weight (t/randn [3 5] :dtype :float64)})))
     (testing ":strict false permits the partial load"
@@ -94,9 +94,9 @@
                                        :strict false))))))
 
 (deftest keep-vars-controls-liveness
-  (let [lin (mod/to-dtype (mod/make "Linear" [5 3]) :float64)]
+  (let [lin (mod/to-dtype! (mod/make "Linear" [5 3]) :float64)]
     (is (false? (ag/requires-grad? (get (mod/state-dict lin) "weight")))
-        "default state_dict = detached copies, for serialization")
+        "default state_dict = graph-detached (storage still shared — see torch_mutation_test)")
     (is (true? (ag/requires-grad? (get-in (mod/params lin) [:weight])))
         "params = the live parameter tensors, for optimization")))
 
