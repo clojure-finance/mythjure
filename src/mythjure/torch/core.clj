@@ -118,7 +118,10 @@
                  executable's own sysconfig (LIBDIR + LDLIBRARY/INSTSONAME)
   Returns {:python-executable :library-path :exe-source :lib-source :info}
   where :info is (python-info exe); never throws — missing parts are nil and
-  the sources say where each part came from (:option :env :path :discovered)."
+  the sources say where each part came from (:option :env :path :discovered).
+  :python-executable is what the interpreter reports as sys.executable; when
+  that differs from what was asked for (pyenv shim), the original request is
+  kept under :requested-executable."
   [& {:keys [python-executable library-path]}]
   (let [[exe exe-source] (cond
                            python-executable [python-executable :option]
@@ -159,7 +162,9 @@
   libpython derived via sysconfig (see resolve-python). Throws with a
   readable message — and leaves the flag unset so a fixed config can retry —
   when no Python is found, it isn't an --enable-shared build, no shared
-  libpython exists, or torch isn't importable."
+  libpython exists, the configured libpython belongs to a different
+  installation than the interpreter (the pyenv trap), or torch isn't
+  importable."
   [& {:keys [python-executable library-path]}]
   (when (compare-and-set! initialized* false true)
     (try
@@ -240,9 +245,9 @@
          (catch Exception _ nil))))
 
 (defn- rethrow-readable
-  "Wrap a Python-side failure in an ex-info whose first line is the actual
-  Python error (libpython-clj buries it under a full traceback) plus the
-  shapes of any tensor args — the usual missing fact in a shape mismatch."
+  "Wrap a Python-side failure in an ex-info whose message is the actual
+  Python error on one line plus the shapes of any tensor args — the usual
+  missing fact in a shape mismatch. Original exception kept as the cause."
   [^Throwable e ctx obj args]
   (let [lines  (->> (str/split-lines (or (.getMessage e) ""))
                     (remove str/blank?))

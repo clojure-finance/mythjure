@@ -3,7 +3,7 @@
 ;; seeds, same schedules, float64 — via mythjure.analysis-torch. Writes
 ;; scripts/seed_verify_torch.edn and diffs against the committed
 ;; scripts/seed_verify.edn.
-;; Run:  MYTHJURE_PYTHON=… MYTHJURE_LIBPYTHON=… clojure -M:torch scripts/seed_verify_torch.clj
+;; Run:  clojure -M:torch scripts/seed_verify_torch.clj   (Python w/ torch auto-discovered; MYTHJURE_PYTHON/MYTHJURE_LIBPYTHON override)
 (require '[mythjure.block :as blk]
          '[mythjure.linalg :as la]
          '[mythjure.torch.core :as tc]

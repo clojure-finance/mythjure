@@ -11,8 +11,8 @@
       instead of JVM segfaults.
 
   Runs under the :test-torch alias:  clojure -M:test-torch
-  Needs MYTHJURE_PYTHON / MYTHJURE_LIBPYTHON pointing at a Python with torch
-  (see mythjure.torch.core docstring for the pyenv trap)."
+  Needs a Python with torch — discovered automatically; MYTHJURE_PYTHON /
+  MYTHJURE_LIBPYTHON override (see mythjure.torch.core / torch.doctor)."
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [mythjure.linalg :as la]
             [mythjure.torch.core :as core]

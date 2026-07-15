@@ -5,7 +5,7 @@
 ;; scripts/spectral_torch.edn and DIFFS every value against the committed
 ;; scripts/spectral.edn (the paper's numbers): rounded values must be equal,
 ;; raw residuals equal to 1e-4 relative.
-;; Run:  MYTHJURE_PYTHON=… MYTHJURE_LIBPYTHON=… clojure -M:torch scripts/spectral_torch.clj
+;; Run:  clojure -M:torch scripts/spectral_torch.clj   (Python w/ torch auto-discovered; MYTHJURE_PYTHON/MYTHJURE_LIBPYTHON override)
 (require '[mythjure.block :as blk]
          '[mythjure.linalg :as la]
          '[mythjure.torch.core :as tc]

@@ -3,10 +3,10 @@
   initialize! pre-flight errors, the doctor report, and the readable
   python-error wrapping in core/call.
 
-  Runs under :test-torch with MYTHJURE_PYTHON/MYTHJURE_LIBPYTHON set (the
-  fixture initializes as usual); the discovery tests additionally verify
-  those env vars are now a FALLBACK — one test spawns a fresh JVM with
-  MYTHJURE_LIBPYTHON unset and proves the lib is derived from sysconfig."
+  Runs under :test-torch. The env vars are optional here like everywhere
+  else — env-var-specific assertions guard on their presence; one test
+  spawns a fresh JVM with MYTHJURE_LIBPYTHON unset and proves the lib is
+  derived from sysconfig."
   (:require [clojure.java.shell :as shell]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]]
@@ -18,12 +18,15 @@
 
 (def ^:private env-python (System/getenv "MYTHJURE_PYTHON"))
 
+;; whatever initialize! would embed — valid with or without env vars
+(def ^:private target-python (:python-executable (core/resolve-python)))
+
 ;; ---------------------------------------------------------------------------
 ;; python-info (subprocess interrogation)
 ;; ---------------------------------------------------------------------------
 
 (deftest python-info-interrogates-the-interpreter
-  (let [info (core/python-info env-python)]
+  (let [info (core/python-info target-python)]
     (is (nil? (:error info)))
     (is (re-matches #"\d+\.\d+\.\d+" (:version info)))
     (is (:enable-shared? info))
@@ -41,15 +44,24 @@
 ;; resolve-python (precedence + shim resolution)
 ;; ---------------------------------------------------------------------------
 
-(deftest resolve-python-option-beats-env
-  (let [r (core/resolve-python :python-executable env-python)]
+(deftest resolve-python-option-beats-env-and-path
+  (let [r (core/resolve-python :python-executable target-python)]
     (is (= :option (:exe-source r)))
-    (is (= env-python (:python-executable r)))))
+    (is (= target-python (:python-executable r)))))
 
 (deftest resolve-python-falls-back-to-env
+  ;; only meaningful when the env var is actually set
+  (when env-python
+    (let [r (core/resolve-python)]
+      (is (= :env (:exe-source r)))
+      (is (= env-python (:python-executable r))))))
+
+(deftest resolve-python-finds-something-without-options
+  ;; on any machine that can run this suite, bare resolution must succeed
   (let [r (core/resolve-python)]
-    (is (= :env (:exe-source r)))
-    (is (= env-python (:python-executable r)))))
+    (is (some? (:python-executable r)))
+    (is (contains? #{:env :path} (:exe-source r)))
+    (is (some? (:library-path r)))))
 
 (deftest resolve-python-de-shims-sys-executable
   ;; Pointing at the pyenv SHIM must resolve to the real interpreter — the
@@ -103,11 +115,15 @@
 (deftest checkup-catches-the-pyenv-trap
   ;; exe from one installation + libpython from another = the 2026-07-15 trap.
   ;; The subprocess probe alone can't see it (torch imports fine there); the
-  ;; consistency check must FAIL it.
-  (let [foreign (first (filter #(.isFile (java.io.File. ^String %))
+  ;; consistency check must FAIL it. Only meaningful when a libpython from a
+  ;; genuinely DIFFERENT installation than the target interpreter exists.
+  (let [own     (get-in (core/resolve-python) [:info :libpython])
+        foreign (first (filter #(.isFile (java.io.File. ^String %))
                                ["/usr/lib/x86_64-linux-gnu/libpython3.12.so"
                                 "/usr/lib/x86_64-linux-gnu/libpython3.12.so.1.0"]))]
-    (when foreign
+    (when (and own foreign
+               (not= (.getCanonicalPath (java.io.File. ^String foreign))
+                     (.getCanonicalPath (java.io.File. ^String own))))
       (let [{:keys [ok? checks]} (doctor/checkup :library-path foreign)]
         (is (not ok?))
         (is (some #(and (= :fail (:status %)) (= "libpython" (:name %))) checks))))))

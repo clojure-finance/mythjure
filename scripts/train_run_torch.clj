@@ -3,7 +3,7 @@
 ;; mythjure.train-torch (whose Adam trajectory is bit-comparable to the
 ;; oracle's), then compares the history against the committed
 ;; scripts/train_history.edn.
-;; Run:  MYTHJURE_PYTHON=… MYTHJURE_LIBPYTHON=… clojure -M:torch scripts/train_run_torch.clj
+;; Run:  clojure -M:torch scripts/train_run_torch.clj   (Python w/ torch auto-discovered; MYTHJURE_PYTHON/MYTHJURE_LIBPYTHON override)
 (require '[mythjure.data :as data]
          '[mythjure.model :as model]
          '[mythjure.torch.core :as tc]
