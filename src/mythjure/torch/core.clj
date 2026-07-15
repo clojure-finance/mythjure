@@ -6,19 +6,24 @@
   so merely having this namespace on the base classpath costs nothing.
 
   Python selection: pass :python-executable / :library-path, or set the
-  MYTHJURE_PYTHON and MYTHJURE_LIBPYTHON env vars, or let libpython-clj
-  auto-detect from PATH. With pyenv BOTH matter: point :python-executable at
-  the real interpreter (…/.pyenv/versions/X/bin/python3, not the shim) AND
-  :library-path at that version's libpythonX.Y.so — otherwise libpython-clj
-  can silently load the SYSTEM libpython, giving you the wrong interpreter
-  and the wrong site-packages (symptom: ModuleNotFoundError for a package
-  that `python3 -c \"import …\"` clearly has). The pyenv Python must be built
-  with --enable-shared.
+  MYTHJURE_PYTHON and MYTHJURE_LIBPYTHON env vars, or do nothing — before
+  embedding, `initialize!` interrogates the chosen executable in a SUBPROCESS
+  (`python-info`) and derives the matching libpython from its own sysconfig,
+  so pointing at a pyenv shim or a venv wrapper resolves to the right
+  interpreter and the right shared library automatically. The env vars are a
+  fallback/override, not a requirement. Historical trap this design removes:
+  with only :python-executable set, libpython-clj could silently load the
+  SYSTEM libpythonX.Y.so — wrong interpreter, wrong site-packages (symptom:
+  ModuleNotFoundError for a package the same `python3 -c \"import …\"`
+  clearly has). The Python must be built with --enable-shared; run
+  (mythjure.torch.doctor/doctor) for a full pre-flight report.
 
   All other mythjure.torch.* namespaces call PyTorch through the module
   handles and helpers defined here. Model code must never require
   libpython-clj directly — new ops go into the façade."
-  (:require [libpython-clj2.python :as py]))
+  (:require [clojure.java.shell :as shell]
+            [clojure.string :as str]
+            [libpython-clj2.python :as py]))
 
 (defonce ^:private initialized* (atom false))
 
@@ -34,21 +39,168 @@
   when a GPU is available; every façade constructor threads this through."
   "cpu")
 
+;; ---------------------------------------------------------------------------
+;; Python discovery (subprocess only — nothing is embedded until initialize!)
+;; ---------------------------------------------------------------------------
+
+(def ^:private probe-script
+  "Python one-shot that prints key=value lines with everything initialize!
+  and the doctor need to know about an interpreter, without embedding it."
+  (str "import sys, sysconfig\n"
+       "def cv(k):\n"
+       "    v = sysconfig.get_config_var(k)\n"
+       "    print(k + '=' + ('' if v is None else str(v)))\n"
+       "print('executable=' + sys.executable)\n"
+       "print('version=' + '%d.%d.%d' % sys.version_info[:3])\n"
+       "print('prefix=' + sys.prefix)\n"
+       "print('base_prefix=' + sys.base_prefix)\n"
+       "cv('LIBDIR')\n"
+       "cv('LDLIBRARY')\n"
+       "cv('INSTSONAME')\n"
+       "cv('Py_ENABLE_SHARED')\n"
+       "try:\n"
+       "    import torch\n"
+       "    print('torch_version=' + torch.__version__)\n"
+       "except Exception as e:\n"
+       "    print('torch_error=' + type(e).__name__ + ': ' + str(e))\n"))
+
+(defn python-info
+  "Interrogate a Python executable in a SUBPROCESS (nothing gets embedded, so
+  this is safe to call before — or instead of — initialize!). Returns
+    {:executable      sys.executable (a pyenv shim/venv wrapper resolves to
+                      the real interpreter here)
+     :version         \"3.12.11\"
+     :prefix :base-prefix
+     :enable-shared?  boolean — libpython-clj requires an --enable-shared build
+     :libpython       first existing LIBDIR/{LDLIBRARY,INSTSONAME}, or nil
+     :torch-version   present iff `import torch` succeeds
+     :torch-error     present iff it doesn't}
+  or {:error msg} when the executable can't be run at all."
+  [exe]
+  (try
+    (let [{:keys [exit out err]} (shell/sh (str exe) "-c" probe-script)]
+      (if-not (zero? exit)
+        {:error (str/trim (str out "\n" err))}
+        (let [raw (into {}
+                        (keep #(when-let [i (str/index-of % "=")]
+                                 [(keyword (str/lower-case (subs % 0 i)))
+                                  (subs % (inc i))]))
+                        (str/split-lines out))
+              lib (first (for [f [(:ldlibrary raw) (:instsoname raw)]
+                               :when (seq f)
+                               :let [p (java.io.File. (str (:libdir raw)) f)]
+                               :when (.isFile p)]
+                           (.getPath p)))]
+          (cond-> {:executable     (:executable raw)
+                   :version        (:version raw)
+                   :prefix         (:prefix raw)
+                   :base-prefix    (:base_prefix raw)
+                   :libdir         (:libdir raw)
+                   :enable-shared? (= "1" (:py_enable_shared raw))
+                   :libpython      lib}
+            (:torch_version raw) (assoc :torch-version (:torch_version raw))
+            (:torch_error raw)   (assoc :torch-error (:torch_error raw))))))
+    (catch java.io.IOException e {:error (.getMessage e)})))
+
+(defn- first-on-path
+  "First of `names` found as an executable on PATH, or nil."
+  [names]
+  (first (for [n names
+               dir (str/split (or (System/getenv "PATH") "") #":")
+               :let [f (java.io.File. dir n)]
+               :when (and (.isFile f) (.canExecute f))]
+           (.getPath f))))
+
+(defn resolve-python
+  "Decide which Python to embed, without embedding it. Precedence per part:
+    executable — :python-executable opt → MYTHJURE_PYTHON → python3/python on PATH
+    libpython  — :library-path opt → MYTHJURE_LIBPYTHON → derived from the
+                 executable's own sysconfig (LIBDIR + LDLIBRARY/INSTSONAME)
+  Returns {:python-executable :library-path :exe-source :lib-source :info}
+  where :info is (python-info exe); never throws — missing parts are nil and
+  the sources say where each part came from (:option :env :path :discovered)."
+  [& {:keys [python-executable library-path]}]
+  (let [[exe exe-source] (cond
+                           python-executable [python-executable :option]
+                           (seq (System/getenv "MYTHJURE_PYTHON")) [(System/getenv "MYTHJURE_PYTHON") :env]
+                           :else (when-let [p (first-on-path ["python3" "python"])] [p :path]))
+        info (when exe (python-info exe))
+        [lib lib-source] (cond
+                           library-path [library-path :option]
+                           (seq (System/getenv "MYTHJURE_LIBPYTHON")) [(System/getenv "MYTHJURE_LIBPYTHON") :env]
+                           (:libpython info) [(:libpython info) :discovered])
+        ;; Embed what the interpreter says it IS (sys.executable): a pyenv
+        ;; shim de-shims to the real binary; a venv python stays the venv
+        ;; python (so its site-packages win).
+        real-exe (or (:executable info) exe)]
+    (cond-> {:python-executable real-exe
+             :exe-source        exe-source
+             :library-path      lib
+             :lib-source        lib-source
+             :info              info}
+      (and exe (not= exe real-exe)) (assoc :requested-executable exe))))
+
+(defonce ^:private embedded* (atom nil))
+
+(defn embedded-python
+  "The resolve-python result initialize! actually embedded, or nil if not
+  yet initialized (used by the doctor to cross-check the live interpreter)."
+  []
+  @embedded*)
+
+(defn- init-error [msg resolution]
+  (ex-info (str msg "\nRun (mythjure.torch.doctor/doctor) for a full report.")
+           (assoc (dissoc resolution :info) :info (:info resolution))))
+
 (defn initialize!
   "Embed CPython and import the torch modules. Idempotent; returns :ok.
-  Options: :python-executable — path to the Python binary to embed."
+  Options: :python-executable / :library-path override MYTHJURE_PYTHON /
+  MYTHJURE_LIBPYTHON; with neither, the interpreter is found on PATH and its
+  libpython derived via sysconfig (see resolve-python). Throws with a
+  readable message — and leaves the flag unset so a fixed config can retry —
+  when no Python is found, it isn't an --enable-shared build, no shared
+  libpython exists, or torch isn't importable."
   [& {:keys [python-executable library-path]}]
   (when (compare-and-set! initialized* false true)
-    (let [exe (or python-executable (System/getenv "MYTHJURE_PYTHON"))
-          lib (or library-path (System/getenv "MYTHJURE_LIBPYTHON"))]
-      (apply py/initialize!
-             (cond-> []
-               exe (conj :python-executable exe)
-               lib (conj :library-path lib))))
-    (alter-var-root #'torch    (constantly (py/import-module "torch")))
-    (alter-var-root #'F        (constantly (py/import-module "torch.nn.functional")))
-    (alter-var-root #'optim    (constantly (py/import-module "torch.optim")))
-    (alter-var-root #'nn-utils (constantly (py/import-module "torch.nn.utils"))))
+    (try
+      (let [{:keys [info] :as r} (resolve-python :python-executable python-executable
+                                                 :library-path library-path)
+            exe (:python-executable r)
+            lib (:library-path r)]
+        (when-not exe
+          (throw (init-error "No Python found: pass :python-executable, set MYTHJURE_PYTHON, or put python3 on PATH." r)))
+        (when (:error info)
+          (throw (init-error (str "Python at " exe " could not be run: " (:error info)) r)))
+        (when-not (:enable-shared? info)
+          (throw (init-error (str "Python at " exe " is not an --enable-shared build; libpython-clj needs the shared libpython. "
+                                  "pyenv: PYTHON_CONFIGURE_OPTS=--enable-shared pyenv install <version>.") r)))
+        (when-not lib
+          (throw (init-error (str "No shared libpython found for " exe " (looked for LDLIBRARY/INSTSONAME under "
+                                  (:libdir info) "); pass :library-path or set MYTHJURE_LIBPYTHON.") r)))
+        (when-not (.isFile (java.io.File. (str lib)))
+          (throw (init-error (str "libpython path " lib " (from " (name (:lib-source r)) ") is not a file.") r)))
+        ;; The pyenv trap (2026-07-15): an explicit libpython from a DIFFERENT
+        ;; installation than the interpreter embeds the foreign interpreter
+        ;; with the wrong site-packages. Refuse rather than segfault-adjacent.
+        (when-let [own (:libpython info)]
+          (when (and (not= (:lib-source r) :discovered)
+                     (not= (.getCanonicalPath (java.io.File. (str lib)))
+                           (.getCanonicalPath (java.io.File. (str own)))))
+            (throw (init-error (str "libpython " lib " (from " (name (:lib-source r)) ") belongs to a different "
+                                    "installation than " exe " (its own is " own "). Unset MYTHJURE_LIBPYTHON / "
+                                    "drop :library-path to use the discovered one.") r))))
+        (when-let [terr (:torch-error info)]
+          (throw (init-error (str "Python at " exe " cannot import torch (" terr "); "
+                                  "install PyTorch into that environment (pip install torch).") r)))
+        (py/initialize! :python-executable exe :library-path lib)
+        (reset! embedded* r))
+      (alter-var-root #'torch    (constantly (py/import-module "torch")))
+      (alter-var-root #'F        (constantly (py/import-module "torch.nn.functional")))
+      (alter-var-root #'optim    (constantly (py/import-module "torch.optim")))
+      (alter-var-root #'nn-utils (constantly (py/import-module "torch.nn.utils")))
+      (catch Throwable t
+        (reset! initialized* false)
+        (throw t))))
   :ok)
 
 (defn initialized? [] @initialized*)
@@ -79,18 +231,51 @@
                          "(libpython-clj auto-converts Python numbers/strings on return)")
                     {:value obj :type (type obj)}))))
 
+(defn- shape-of
+  "Shape of a live tensor as a Clojure vector, nil for anything else. Error-
+  path helper only — must not route back through call/assert-pyobj."
+  [x]
+  (when-not (or (nil? x) (number? x) (string? x) (boolean? x) (coll? x))
+    (try (some-> (py/get-attr x "shape") py/->jvm vec)
+         (catch Exception _ nil))))
+
+(defn- rethrow-readable
+  "Wrap a Python-side failure in an ex-info whose first line is the actual
+  Python error (libpython-clj buries it under a full traceback) plus the
+  shapes of any tensor args — the usual missing fact in a shape mismatch."
+  [^Throwable e ctx obj args]
+  (let [lines  (->> (str/split-lines (or (.getMessage e) ""))
+                    (remove str/blank?))
+        ;; libpython-clj usually surfaces \"ErrorType: msg\" directly; when a
+        ;; full Python traceback comes through, the error is its LAST line.
+        py-msg (or (if (str/starts-with? (or (first lines) "") "Traceback")
+                     (last lines)
+                     (first lines))
+                   "python call failed")
+        shapes (cond-> []
+                 (shape-of obj) (conj [:self (shape-of obj)])
+                 :always (into (keep-indexed (fn [i a] (when-let [s (shape-of a)] [i s])) args)))]
+    (throw (ex-info (str ctx " failed: " py-msg
+                         (when (seq shapes) (str " | tensor shapes " (vec shapes))))
+                    {:ctx ctx :tensor-shapes shapes}
+                    e))))
+
 (defn call
   "Call a method on a Python object: (call t \"reshape\" 2 3)."
   [obj method & args]
   (assert-pyobj obj (str "call ." method))
-  (apply py/call-attr obj method args))
+  (try (apply py/call-attr obj method args)
+       (catch clojure.lang.ExceptionInfo e (throw e))
+       (catch Exception e (rethrow-readable e (str "call ." method) obj args))))
 
 (defn call-kw
   "Call a method with positional args and keyword args:
   (call-kw F \"layer_norm\" [x [d]] {:weight g :bias b})."
   [obj method pos-args kw-args]
   (assert-pyobj obj (str "call-kw ." method))
-  (py/call-attr-kw obj method pos-args kw-args))
+  (try (py/call-attr-kw obj method pos-args kw-args)
+       (catch clojure.lang.ExceptionInfo e (throw e))
+       (catch Exception e (rethrow-readable e (str "call-kw ." method) obj pos-args))))
 
 (defn attr
   "Read a Python attribute: (attr t \"shape\")."

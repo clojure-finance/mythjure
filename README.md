@@ -83,9 +83,8 @@ to tensor ops — no autograd anywhere in the experiment path. The pure
 implementation remains the correctness oracle: the torch backend's forward,
 gradients, and full Adam training trajectories are pinned to it by tests
 (`clojure -M:test-torch`, float64, agreement ≤1e-12; needs a Python with
-`torch` installed — see `mythjure.torch.core` for setup, incl. the pyenv
-shared-library note). The plain `clojure -M:test` suite and base classpath
-stay dependency-free.
+`torch` installed — see *Torch backend setup* below). The plain
+`clojure -M:test` suite and base classpath stay dependency-free.
 
 Beyond the experiment mirrors, the façade carries three general-purpose
 surfaces: `mythjure.torch.autograd` (opt-in reverse-mode autograd —
@@ -100,6 +99,54 @@ declared as one-line `defop` table rows with explicit coercion/return specs
 dispatch surface that reaches any torch op today, no wrapper needed; and
 `require-python` for docstring-level discovery at the REPL — see the
 namespace docstring for the promotion policy between tiers).
+
+### Torch backend setup
+
+You need a Python 3 built with `--enable-shared` that can `import torch`
+(CPU wheels are fine: `pip install torch`). That's it — `initialize!` finds
+`python3` on `PATH`, asks it (in a subprocess) where its shared `libpython`
+lives via `sysconfig`, and embeds the pair. pyenv shims and venv wrappers
+resolve to the right interpreter automatically. To pick a *specific* Python,
+set the env vars (they override discovery):
+
+```bash
+export MYTHJURE_PYTHON=~/.pyenv/versions/3.12.11/bin/python3
+export MYTHJURE_LIBPYTHON=~/.pyenv/versions/3.12.11/lib/libpython3.12.so   # optional; derived from MYTHJURE_PYTHON if unset
+clojure -M:nrepl:torch     # REPL with the backend
+clojure -M:test-torch      # pure + torch suites
+```
+
+When anything misbehaves, run the doctor first — it checks the whole chain
+(executable → shared build → libpython pairing → torch importability →
+embedded state) in a subprocess, so it's safe even when initialization
+itself is broken:
+
+```clojure
+(require '[mythjure.torch.doctor :as doctor])
+(doctor/doctor)
+;; mythjure.torch doctor
+;; ─────────────────────
+;;  ✓ python executable  /home/you/.pyenv/versions/3.12.11/bin/python3 (from env)
+;;  ✓ interpreter        Python 3.12.11
+;;  ✓ shared build       --enable-shared ✓
+;;  ✓ libpython          …/lib/libpython3.12.so (from env, matches interpreter)
+;;  ✓ torch              2.9.1
+;;  ✓ embedded           initialized; embedded …/bin/python3 (torch 2.9.1)
+```
+
+Misconfigurations fail *before* CPython is embedded, with the fix in the
+error message — including the classic pyenv trap (an executable from one
+Python installation paired with a `libpython` from another, which would
+otherwise embed the wrong interpreter with the wrong `site-packages`).
+
+**Deploying an app on the backend:** an uberjar does not bundle Python — the
+runtime host needs the same two things (shared-build Python 3 + torch), and
+discovery/env vars work identically there. For a pinned, reproducible unit,
+use a container: start from `python:3.12-slim` (shared-build Python), add a
+JDK 21 and `pip install torch --index-url https://download.pytorch.org/whl/cpu`,
+and run the uberjar — no env vars needed, discovery finds the image's Python.
+For GPU work later, swap in a CUDA-enabled torch wheel/base image; the bridge
+is device-agnostic.
 
 ## REPL
 
