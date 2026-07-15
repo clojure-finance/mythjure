@@ -30,6 +30,9 @@
 (defn arange [n & {:as opts}]
   (core/call-kw core/torch "arange" [n] (make-opts opts)))
 
+(defn eye [n & {:as opts}]
+  (core/call-kw core/torch "eye" [n] (make-opts opts)))
+
 (defn from-clj
   "Build a tensor from (nested) Clojure vectors or a scalar."
   [data & {:as opts}]
