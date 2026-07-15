@@ -7,3 +7,6 @@
 *.class
 /attic/
 /.claude/
+# experiment outputs are generated; the paper's recorded results are pinned at tag paper-v1
+/scripts/*.log
+/scripts/*.edn

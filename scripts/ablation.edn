@@ -1,9 +1,0 @@
-[{:label "A full+windowed",
-  :accuracy 0.96875,
-  :max-abar 0.5269779751265942}
- {:label "B ablate+windowed",
-  :accuracy 0.0625,
-  :max-abar 0.5182872824559301}
- {:label "C ablate+full-attn",
-  :accuracy 1.0,
-  :max-abar 0.515834795497176}]

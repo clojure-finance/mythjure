@@ -44,7 +44,11 @@ mechanisms directly rather than to reach for scale.
 These scripts reproduce the experiments in the companion paper
 [*"LayerNorm as Implicit Gain Control in Looped Transformers"*](https://arxiv.org/abs/2607.10681)
 (arXiv:2607.10681); the table below maps each script to its result and paper section. Each writes a `.log` and
-(most) a `.edn`.
+(most) a `.edn`. The outputs recorded for the paper are pinned at tag
+[`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1)
+(untracked on `main` so ongoing development doesn't churn result files).
+The `*_torch.clj` variants rerun the slowest experiments on the torch backend
+(~11–86× faster) and verify they reproduce the recorded results exactly.
 
 Reproduce everything in one go with `scripts/run_all.sh` — it runs the test suite
 (the grad checks) and then every experiment below in paper order, capturing each
