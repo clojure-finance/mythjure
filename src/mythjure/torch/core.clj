@@ -128,6 +128,27 @@
   [m]
   (py/->py-dict m))
 
+(defn py-list
+  "Convert a Clojure collection to a real Python list. Some torch ops accept
+  the auto-bridged JVM vector (cat/stack do today), but that is per-op C++
+  type-checking luck — use this when passing a list-of-tensors explicitly."
+  [coll]
+  (py/->py-list coll))
+
+(defn py-vec
+  "Materialize a Python sequence (tuple/list, incl. torch's namedtuples) as a
+  Clojure vector whose elements stay LIVE Python objects — unlike ->jvm, no
+  deep conversion, so tensors come back as tensors (torch.split/chunk/topk
+  return tuples of tensors)."
+  [obj]
+  ;; NOTE: bridged Python tuples/lists implement java.util.List AND look
+  ;; coll?-ish to Clojure, so this branch must come before the pyobj guard.
+  (if (instance? java.util.List obj)
+    (vec obj)
+    (do (assert-pyobj obj "py-vec")
+        (mapv #(py/get-item obj %)
+              (range (py/->jvm (py/call-attr (py/import-module "builtins") "len" obj)))))))
+
 (defn py-keys
   "Keys of a Python mapping (dict / OrderedDict) as a vector of strings.
   The keys() view object does NOT auto-convert across the bridge (it comes

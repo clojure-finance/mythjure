@@ -5,8 +5,9 @@
   [rows × cols], `transpose` with no dims swaps the last two. Constructors
   default to core/*device* and :float32; pass :dtype :float64 when comparing
   against the pure-Clojure oracle."
-  (:refer-clojure :exclude [get])
-  (:require [mythjure.torch.core :as core]))
+  (:refer-clojure :exclude [get cat abs flatten chunk])
+  (:require [mythjure.torch.core :as core]
+            [mythjure.torch.op :as op :refer [defop]]))
 
 ;; ---------------------------------------------------------------------------
 ;; Construction
@@ -156,3 +157,61 @@
   along `dim` (the embedding-gradient scatter)."
   [t dim idx src]
   (core/call t "index_add" dim idx src))
+
+;; ---------------------------------------------------------------------------
+;; Curated op table (op/defop rows — direction doc §5.1 item 1).
+;; One line per op; coercions/return conversions are declared, not coded.
+;; Every row registers in op/op-registry and the table-driven test in
+;; torch_op_test requires a test entry for each — keep them in sync.
+;; ---------------------------------------------------------------------------
+
+;; -- shape combinators --------------------------------------------------------
+(defop cat          "Concatenate tensors along :dim (default 0)."             [tensors] {:coerce {0 :list}})
+(defop stack        "Stack tensors along a NEW dim :dim (default 0)."         [tensors] {:coerce {0 :list}})
+(defop split        "Split along :dim into chunks of `size` (int, or vector of sizes); returns a vector of tensors." [t size] {:ret :vec})
+(defop chunk        "Split along :dim into `n` roughly equal chunks; returns a vector of tensors." [t n] {:ret :vec})
+(defop unbind       "Remove :dim (default 0), returning its slices as a vector of tensors." [t] {:ret :vec})
+(defop permute      "Reorder dims: (permute t [2 0 1])."                      [t dims] {:coerce {1 :tuple}})
+(defop flatten      "Flatten dims :start_dim..:end_dim (defaults 0..-1) into one." [t] {})
+(defop broadcast-to "Broadcast t to `shape` (expanded view, no copy)."        [t shape] {:coerce {1 :tuple}})
+
+;; -- reductions ---------------------------------------------------------------
+(defop mean     "Mean over all elements, or over :dim (:keepdim)."            [t] {})
+(defop prod     "Product over all elements, or over :dim (:keepdim)."         [t] {})
+(defop cumsum   "Cumulative sum along `dim`."                                 [t dim] {})
+(defop argmax   "Index of the max element (flat), or along :dim (:keepdim)."  [t] {})
+(defop argmin   "Index of the min element (flat), or along :dim (:keepdim)."  [t] {})
+(defop topk     "[values indices] of the k largest (:dim/:largest/:sorted)."  [t k] {:ret :vec})
+(defop variance "Variance; :dim/:keepdim/:correction (default correction 1 = unbiased, torch's default)." [t] {:py-name "var"})
+(defop std      "Standard deviation; :dim/:keepdim/:correction as variance."  [t] {})
+
+;; -- elementwise --------------------------------------------------------------
+(defop abs     "Absolute value elementwise."                                  [t] {})
+(defop pow     "t^p elementwise; p is a scalar or a tensor."                  [t p] {})
+(defop clamp   "Clamp into [:min, :max] (either may be omitted)."             [t] {})
+(defop where   "Elementwise (if condition x y); condition is a bool tensor."  [condition x y] {})
+(defop floor   "Floor elementwise."                                           [t] {})
+(defop ceil    "Ceiling elementwise."                                         [t] {})
+(defop round   "Round-half-to-even elementwise."                              [t] {})
+(defop sign    "Sign (−1/0/+1) elementwise."                                  [t] {})
+(defop log1p   "log(1+t) elementwise."                                        [t] {})
+(defop expm1   "exp(t)−1 elementwise."                                        [t] {})
+(defop erf     "Gauss error function elementwise (torch's exact erf — NOT the gelu-tanh path; nn/gelu stays pinned to the oracle)." [t] {})
+(defop maximum "Elementwise max of two tensors."                              [a b] {})
+(defop minimum "Elementwise min of two tensors."                              [a b] {})
+
+;; -- comparison / logical / selection -----------------------------------------
+(defop eq            "Elementwise equality (bool tensor); cf. allclose."      [a b] {})
+(defop ne            "Elementwise inequality (bool tensor)."                  [a b] {})
+(defop ge            "Elementwise >= (bool tensor)."                          [a b] {})
+(defop le            "Elementwise <= (bool tensor)."                          [a b] {})
+(defop logical-and   "Elementwise boolean AND."                               [a b] {})
+(defop logical-not   "Elementwise boolean NOT."                               [t] {})
+(defop masked-select "1-D tensor of t's entries where the bool mask is true." [t mask] {})
+(defop allclose      "True if all entries agree within :rtol/:atol."          [a b] {})
+
+;; einsum is variadic, so it stays a hand-written tier-2 call:
+(defn einsum
+  "torch.einsum: (einsum \"ij,jk->ik\" a b)."
+  [equation & tensors]
+  (op/torch-fn "einsum" (cons equation tensors)))

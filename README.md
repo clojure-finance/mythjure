@@ -87,13 +87,19 @@ gradients, and full Adam training trajectories are pinned to it by tests
 shared-library note). The plain `clojure -M:test` suite and base classpath
 stay dependency-free.
 
-Beyond the experiment mirrors, the façade carries two general-purpose
+Beyond the experiment mirrors, the façade carries three general-purpose
 surfaces: `mythjure.torch.autograd` (opt-in reverse-mode autograd —
 `backward!`, `no-grad`, param-map grad helpers — validated leaf-for-leaf to
-machine ε against the manual VJPs across every model mode) and
+machine ε against the manual VJPs across every model mode),
 `mythjure.torch.module` (`nn.Module`/`state_dict` interop: a Python module's
 weights become a nested Clojure param map, loadable/savable and trainable
-end-to-end through the façade's optimizer and autograd helpers).
+end-to-end through the façade's optimizer and autograd helpers), and
+`mythjure.torch.op` (op coverage in three tiers: curated named wrappers
+declared as one-line `defop` table rows with explicit coercion/return specs
+— every row is enforced-tested; a generic `torch-fn`/`nn-fn`/`method`
+dispatch surface that reaches any torch op today, no wrapper needed; and
+`require-python` for docstring-level discovery at the REPL — see the
+namespace docstring for the promotion policy between tiers).
 
 ## REPL
 
