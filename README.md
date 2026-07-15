@@ -1,5 +1,7 @@
 # mythjure
 
+[![arXiv](https://img.shields.io/badge/arXiv-2607.10681-b31b1b.svg)](https://arxiv.org/abs/2607.10681)
+
 Building a mini **looped (recurrent-depth) transformer** from scratch in Clojure,
 REPL-first, on a CPU — to understand the Parcae / S4 stability mathematics
 hands-on rather than at scale.
@@ -39,9 +41,9 @@ mechanisms directly rather than to reach for scale.
 
 ## Experiments (`scripts/`)
 
-These scripts reproduce the experiments in the companion write-up *"LayerNorm as
-Implicit Gain Control in Looped Transformers"* (maintained separately); the table
-below maps each script to its result and paper section. Each writes a `.log` and
+These scripts reproduce the experiments in the companion paper
+[*"LayerNorm as Implicit Gain Control in Looped Transformers"*](https://arxiv.org/abs/2607.10681)
+(arXiv:2607.10681); the table below maps each script to its result and paper section. Each writes a `.log` and
 (most) a `.edn`.
 
 Reproduce everything in one go with `scripts/run_all.sh` — it runs the test suite
@@ -88,3 +90,22 @@ Then, in the REPL (or via your editor):
 
 The base classpath is dependency-free on purpose: the whole project is pure
 `clojure.core`, needs nothing native, and the REPL always starts clean.
+
+## Citation
+
+If you use this code or build on the paper, please cite:
+
+```bibtex
+@misc{buehlmaier2026layernorm,
+  title         = {LayerNorm as Implicit Gain Control in Looped Transformers},
+  author        = {Matthias M. M. Buehlmaier},
+  year          = {2026},
+  eprint        = {2607.10681},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2607.10681}
+}
+```
+
+The exact code state used for the paper's experiments is pinned at tag
+[`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1).
