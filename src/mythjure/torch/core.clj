@@ -147,7 +147,9 @@
 
 (defn embedded-python
   "The resolve-python result initialize! actually embedded, or nil if not
-  yet initialized (used by the doctor to cross-check the live interpreter)."
+  yet initialized — the record of how the live interpreter was chosen.
+  The doctor's embedded check reports it when the environment has changed
+  since this JVM embedded Python (the restart-the-JVM warning path)."
   []
   @embedded*)
 
@@ -348,9 +350,3 @@
   (assert-pyobj obj "py-keys")
   (mapv str (py/->jvm (py/call-attr (py/import-module "builtins") "list"
                                     (py/call-attr obj "keys")))))
-
-(defn raw-call
-  "Sanctioned escape hatch for anything the façade doesn't cover yet.
-  Prefer adding a named façade fn once a call site stabilizes."
-  [obj method & args]
-  (apply py/call-attr obj method args))

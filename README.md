@@ -37,7 +37,10 @@ mechanisms directly rather than to reach for scale.
 | `train.clj` | Adam, minibatch loop, and the three carry diagnostics (ā distribution, dL/dā sign, per-channel convergence ratio). |
 | `copytask.clj` | Synthetic copy-across-a-gap task `[A][PAD×k][QUERY]` with a single dial `k`. |
 
-**Tests** (`test/`): `backprop_test.clj` (primitive VJPs, attention, block, BPTT) + `model_test.clj` (full-model finite-diff over every leaf × standard/windowed/ablated/faithful). Run `clojure -M:test` → **7 tests, 100 assertions**, analytic vs finite-diff to <1e-6.
+Post-paper, `src/` also holds `*_torch.clj` mirrors of the namespaces above
+and the `mythjure/torch/` façade — see *Torch backend* below.
+
+**Tests** (`test/`): `backprop_test.clj` (primitive VJPs, attention, block, BPTT) + `model_test.clj` (full-model finite-diff over every leaf × standard/windowed/ablated/free/faithful) + `analysis_test.clj` (`spectral-radius` pinned on analytically-known maps). Run `clojure -M:test` → **10 tests, 123 assertions**, analytic vs finite-diff to <1e-6.
 
 ## Experiments (`scripts/`)
 
@@ -50,7 +53,7 @@ These scripts reproduce the experiments in the companion paper
 The `*_torch.clj` variants rerun the slowest experiments on the torch backend
 (~11–86× faster) and verify they reproduce the recorded results exactly.
 
-Reproduce everything in one go with `scripts/run_all.sh` — it runs the test suite
+Reproduce every pure-Clojure experiment in one go with `scripts/run_all.sh` — it runs the test suite
 (the grad checks) and then every experiment below in paper order, capturing each
 run's output to `scripts/<name>.log` and printing a timed PASS/FAIL summary. Flags:
 `--no-test` skips the suite, `--quick` skips the slow LM/curriculum runs. To run a
@@ -77,8 +80,8 @@ pure-Clojure implementation. Since `paper-v1`, the repo also carries an
 optional **PyTorch backend** behind the same function signatures, for speed
 (~86× on a full training step at paper scale, CPU-only): `mythjure.torch.*` is
 a thin Clojure façade over [libpython-clj](https://github.com/clj-python/libpython-clj),
-and `block-torch` / `backprop-torch` / `model-torch` / `train-torch` mirror
-their pure namespaces one-to-one using the same hand-derived VJPs translated
+and `block-torch` / `backprop-torch` / `model-torch` / `train-torch` /
+`analysis-torch` mirror their pure namespaces one-to-one using the same hand-derived VJPs translated
 to tensor ops — no autograd anywhere in the experiment path. The pure
 implementation remains the correctness oracle: the torch backend's forward,
 gradients, and full Adam training trajectories are pinned to it by tests

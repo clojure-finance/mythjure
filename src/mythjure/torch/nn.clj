@@ -5,9 +5,9 @@
    - layer-norm eps defaults to 1e-5, matching linalg/layernorm.
    - softmax normalizes over the last dim by default (row-wise).
 
-  sdpa is provided for later speed work but must NOT be used until the manual
-  attention path is oracle-validated — it's a fused kernel whose computation
-  path can't be compared term-by-term against mythjure.backprop."
+  sdpa is provided for speed work on the general-purpose path but is never
+  used in the experiment path — it's a fused kernel whose computation path
+  can't be compared term-by-term against mythjure.backprop."
   (:require [mythjure.torch.core :as core]))
 
 (defn layer-norm
@@ -39,8 +39,10 @@
 (defn softplus [x] (core/call core/F "softplus" x))
 
 (defn sdpa
-  "Fused scaled-dot-product attention. DO NOT use before the manual attention
-  path passes oracle validation (see direction doc §1.4)."
+  "Fused scaled-dot-product attention. Not used in the experiment path — a
+  fused kernel can't be compared term-by-term against the mythjure.backprop
+  oracle (see the ns docstring). Use it only as a measured speed choice on
+  the general-purpose path."
   [q k v & {:keys [causal? dropout] :or {causal? true dropout 0.0}}]
   (core/call-kw core/F "scaled_dot_product_attention" [q k v]
                 {:is_causal causal? :dropout_p dropout}))

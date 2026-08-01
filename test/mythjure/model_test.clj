@@ -1,9 +1,10 @@
 (ns mythjure.model-test
   "End-to-end finite-difference gradient checks for the FULL model (Prelude →
   looped block → Coda → cross-entropy), for every trainable parameter leaf, in
-  three regimes: standard, windowed attention, and the recurrence ablation.
-  Covers what backprop-test does not: wte, wpe, wu, log-A, final LN, MLP biases,
-  and the ablated backward path."
+  every carry regime: standard, windowed attention, the recurrence ablation,
+  unconstrained carry (:free), and faithful Parcae. Covers what backprop-test
+  does not: wte, wpe, wu, log-A, final LN, MLP biases, and the ablated and
+  free-carry backward paths."
   (:require [clojure.test :refer [deftest is testing]]
             [mythjure.model :as model]
             [mythjure.backprop :as bp]))
@@ -50,6 +51,10 @@
 (deftest ablated-model-gradients
   (testing "recurrence ablation (block reads only E), all trainable leaves"
     (check-all (model/init (assoc base :window 1 :ablate? true)) inputs targets wts)))
+
+(deftest free-carry-model-gradients
+  (testing "unconstrained carry (:carry-mode :free, ā = log-A directly), all leaves"
+    (check-all (model/init (assoc base :carry-mode :free :log-A0 0.7)) inputs targets wts)))
 
 (def ^:private faithful-paths
   (into paths [[[:log-dt] :v] [[:B] :v] [[:ln-p :gamma] :v] [[:ln-p :beta] :v]]))

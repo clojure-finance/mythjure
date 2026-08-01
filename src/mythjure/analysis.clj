@@ -353,12 +353,14 @@
                to reach tol in budget. :H is the best (last) iterate.
   :non-convergent — residual plateaus or grows: a bounded, non-settling orbit.
                No fixed point is reached; Jacobian analysis 'at h*' is
-               undefined for these."
+               undefined for these.
+  :iters is cumulative over both legs (cap + probe iterations) — the total
+  spent from H0, whichever branch fired."
   [G H0 & {:keys [tol cap probe] :or {tol 1e-9 cap 20000 probe 2000}}]
   (let [st (settle G H0 :tol tol :cap cap)]
     (if (:converged? st)
       (assoc st :status :converged)
-      (let [st2 (settle G (:H st) :tol tol :cap probe)]
+      (let [st2 (update (settle G (:H st) :tol tol :cap probe) :iters + (:iters st))]
         (cond
           (:converged? st2)                     (assoc st2 :status :converged)
           (< (:resid st2) (* 0.75 (:resid st))) (assoc st2 :status :slow)

@@ -15,7 +15,8 @@
   file) is the greppable record of which ops can alias; `clone` breaks
   aliasing, `data-ptr` diagnoses it."
   (:refer-clojure :exclude [get cat abs flatten chunk])
-  (:require [mythjure.torch.core :as core]
+  (:require [clojure.walk :as walk]
+            [mythjure.torch.core :as core]
             [mythjure.torch.op :as op :refer [defop]]))
 
 ;; ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@
   monitoring only — never call on big tensors inside a training step."
   [t]
   (let [x (core/->jvm (core/call (core/call (core/call t "detach") "cpu") "tolist"))]
-    (if (sequential? x) (clojure.walk/postwalk #(if (sequential? %) (vec %) %) x) x)))
+    (if (sequential? x) (walk/postwalk #(if (sequential? %) (vec %) %) x) x)))
 
 (defn to-device
   "Move t to a device. Returns t ITSELF when it is already there (torch's

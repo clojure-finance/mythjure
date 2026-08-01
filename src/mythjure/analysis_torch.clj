@@ -72,12 +72,13 @@
         :else      (recur (inc k) GH)))))
 
 (defn classify-settle-t
-  "analysis/classify-settle on tensors (same statuses, same trend fallback)."
+  "analysis/classify-settle on tensors (same statuses, same trend fallback,
+  same cumulative :iters across both legs)."
   [G-t H0-t & {:keys [tol cap probe] :or {tol 1e-9 cap 20000 probe 2000}}]
   (let [st (settle-t G-t H0-t :tol tol :cap cap)]
     (if (:converged? st)
       (assoc st :status :converged)
-      (let [st2 (settle-t G-t (:H st) :tol tol :cap probe)]
+      (let [st2 (update (settle-t G-t (:H st) :tol tol :cap probe) :iters + (:iters st))]
         (cond
           (:converged? st2)                     (assoc st2 :status :converged)
           (< (:resid st2) (* 0.75 (:resid st))) (assoc st2 :status :slow)

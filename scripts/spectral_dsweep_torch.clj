@@ -65,7 +65,8 @@
       (:converged? st) (assoc st :status :converged)
       (:deadline? st)  (assoc st :status :budget-truncated)
       :else
-      (let [st2 (settle-b G-t (:H st) 1e-9 2000)]
+      ;; :iters cumulative across both legs, matching analysis/classify-settle
+      (let [st2 (update (settle-b G-t (:H st) 1e-9 2000) :iters + (:iters st))]
         (cond
           (:converged? st2)                     (assoc st2 :status :converged)
           (:deadline? st2)                      (assoc st2 :status :budget-truncated)

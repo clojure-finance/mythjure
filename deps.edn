@@ -1,9 +1,11 @@
 {:paths ["src"]
 
- ;; Base deps are intentionally empty. Everything here is pure clojure.core and
- ;; needs nothing native, so the REPL always starts clean and the code is
- ;; reproducible on any JVM with no BLAS/LAPACK or platform dependencies.
- :deps {}
+ ;; Base deps: only Clojure itself, pinned so the language version doesn't
+ ;; float with the installed CLI tools (defop's [args & {:as kw}] needs ≥1.11).
+ ;; Everything here is pure clojure.core and needs nothing native, so the REPL
+ ;; always starts clean and the code is reproducible on any JVM with no
+ ;; BLAS/LAPACK or platform dependencies.
+ :deps {org.clojure/clojure {:mvn/version "1.12.4"}}
 
  :aliases
  {;; editor connects here:  clojure -M:nrepl  (--port 0 = auto-assign, see .nrepl-port)

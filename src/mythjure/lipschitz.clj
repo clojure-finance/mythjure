@@ -58,9 +58,12 @@
 
 (defn directional-ratio
   "Finite-difference amplification ‖f(H+ε)−f(H)‖/‖ε‖ of f at H along a specific
-  perturbation ε. The building block under both Lipschitz estimators."
-  [f H eps]
-  (/ (fro-norm (la/mat- (f (la/mat+ H eps)) (f H))) (fro-norm eps)))
+  perturbation ε. The building block under both Lipschitz estimators. The
+  4-arity takes a precomputed fH = (f H) so callers probing many directions
+  pay one base evaluation, not one per direction."
+  ([f H eps] (directional-ratio f H (f H) eps))
+  ([f H fH eps]
+   (/ (fro-norm (la/mat- (f (la/mat+ H eps)) fH)) (fro-norm eps))))
 
 (defn channel-axis
   "Perturbation localized to channel c (equal in every position), Frobenius
@@ -76,7 +79,8 @@
   [f H & {:keys [delta] :or {delta 1e-3}}]
   (let [seq-len (count H) d (count (first H))
         mag (* delta (max 1.0 (fro-norm H)))
-        per (mapv #(directional-ratio f H (channel-axis seq-len d % mag)) (range d))]
+        fH  (f H)
+        per (mapv #(directional-ratio f H fH (channel-axis seq-len d % mag)) (range d))]
     {:max (apply max per) :per-channel per}))
 
 (defn lipschitz-robust
@@ -84,4 +88,4 @@
   diagonal-carry looped updates."
   [f H & {:as opts}]
   (max (:max (apply lipschitz f H (mapcat identity opts)))
-       (:max (channel-lipschitz f H))))
+       (:max (apply channel-lipschitz f H (mapcat identity opts)))))

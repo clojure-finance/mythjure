@@ -72,13 +72,16 @@
             live-exe (str (py/get-attr sys "executable"))
             ;; torch.__version__ is a str SUBCLASS (TorchVersion); ->jvm
             ;; walks it like a sequence — str is the correct conversion.
-            live-tv  (str (py/get-attr core/torch "__version__"))]
+            live-tv  (str (py/get-attr core/torch "__version__"))
+            embedded (core/embedded-python)]
         (if (or (nil? python-executable) (= live-exe python-executable))
           (check :ok "embedded"
                  (str "initialized; embedded " live-exe " (torch " live-tv ")"))
           (check :warn "embedded"
-                 (str "embedded interpreter " live-exe " differs from the currently-resolved "
-                      python-executable)
+                 (str "embedded interpreter " live-exe
+                      (when-let [src (:exe-source embedded)]
+                        (str " (resolved from " (name src) " at initialize! time)"))
+                      " differs from the currently-resolved " python-executable)
                  "an embedded CPython cannot be swapped — restart the JVM to pick up the new config")))
       (catch Exception e
         (check :fail "embedded" (str "initialized but live check failed: " (ex-message e)))))))

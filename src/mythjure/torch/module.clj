@@ -8,9 +8,10 @@
   inspect/param-report for observability, plain get-in/assoc-in for surgery.
 
   state_dict vs live parameters: torch's state_dict includes buffers (running
-  stats…) and by default returns DETACHED copies — right for serialization.
-  Pass :keep-vars true (or use `params`) to get the LIVE tensors — right for
-  optimization. Buffers surfacing in `params` are harmless to optimizers:
+  stats…) and by default returns tensors detached from the autograd graph —
+  but still SHARING STORAGE with the live weights (detached ≠ independent;
+  see `state-dict`). Pass :keep-vars true (or use `params`) to get the LIVE
+  autograd tensors — right for optimization. Buffers surfacing in `params` are harmless to optimizers:
   they never receive a .grad, and Adam skips gradless tensors."
   (:require [clojure.string :as str]
             [mythjure.torch.core :as core]))
