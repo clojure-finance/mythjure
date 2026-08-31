@@ -109,6 +109,13 @@ per-op coercion luck, `:reload-all`, dtype pins, aliasing, autograd
 semantics — are catalogued in **[doc/interop.md](doc/interop.md)**, each
 with a pointer to the test that pins it.
 
+A complete outside-user example lives in **[examples/two_moons.clj](examples/two_moons.clj)**
+(`clojure -M:torch examples/two_moons.clj`): a small MLP on a synthetic
+two-moons task, trained twice through the general-purpose surfaces alone —
+once as a Clojure param map + forward fn, once as a Python `nn.Sequential`
+driven through the module interop — deterministic, no extra dependencies,
+pinned by the torch test suite.
+
 The first post-paper experiment built on this speed is
 `scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
 a budget-guarded width ladder for the paper's §5.3 fixed-point/spectral
