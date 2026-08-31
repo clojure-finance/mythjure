@@ -4,12 +4,13 @@
   asserts (accuracy floors; MNIST also the exact checkpoint round-trip) fire
   on regression; these tests fail on any throw. The MNIST test is guarded on
   the cached download so the suite stays network-free."
-  (:require [clojure.test :refer [deftest is]]))
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is]]))
 
 (deftest mnist-example-runs
   ;; Guarded on the cached download so the suite never needs the network:
   ;; run `clojure -M:torch examples/mnist.clj` once to enable this test.
-  (if (.exists (clojure.java.io/file "data/mnist/train-images-idx3-ubyte"))
+  (if (.exists (io/file "data/mnist/train-images-idx3-ubyte"))
     (let [scratch (create-ns 'mythjure.mnist-example-scratch)]
       (binding [*ns* scratch]
         (clojure.core/refer 'clojure.core)

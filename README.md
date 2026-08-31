@@ -142,8 +142,8 @@ round-trip.
 and tensors at buffer level (dtype-next ⇄ numpy — the fast lane, not
 element-wise Clojure), with **copy semantics in both directions, pinned by
 tests** — mutating a tensor never touches its source dataset and vice
-versa, so the mutation rules above extend across the ecosystem boundary
-with no caveats. Once data is in dataset form, the rest of the scicloj
+versa, so the façade's mutation rules (*Mutation & views* below) extend
+across the ecosystem boundary with no caveats. Once data is in dataset form, the rest of the scicloj
 stack (tablecloth, kindly/noj visualization) applies as-is.
 
 The first post-paper experiment built on this speed is
@@ -189,8 +189,8 @@ itself is broken:
 ;;  ✓ interpreter        Python 3.12.11
 ;;  ✓ shared build       --enable-shared ✓
 ;;  ✓ libpython          …/lib/libpython3.12.so (from env, matches interpreter)
-;;  ✓ torch              2.9.1
-;;  ✓ embedded           initialized; embedded …/bin/python3 (torch 2.9.1)
+;;  ✓ torch              2.13.0
+;;  ✓ embedded           initialized; embedded …/bin/python3 (torch 2.13.0)
 ```
 
 Misconfigurations fail *before* CPython is embedded, with the fix in the
