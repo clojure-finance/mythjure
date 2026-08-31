@@ -90,6 +90,19 @@ gradients, and full Adam training trajectories are pinned to it by tests
 `torch` installed — see *Torch backend setup* below). The plain
 `clojure -M:test` suite and base classpath stay dependency-free.
 
+**Scope.** These surfaces are a *semantics-hardened Clojure façade over
+PyTorch*: the library owns the Clojure↔PyTorch **boundary** — explicit
+coercion, guarded mutation with empirically-pinned aliasing, autograd
+contexts, bulk ingest, state-dict interop — while PyTorch keeps owning
+deep learning itself (data loading, optimizers, schedulers, the module
+ecosystem), all of it reachable through the generic tier and individually
+promotable to a curated op when real use shows interop friction. Models
+come in two co-equal idioms, both normalizing to Clojure-visible
+parameters: a Clojure param map + forward fn, or a Python `nn.Module`
+through the module interop (both demonstrated side by side in
+`examples/`). It is not a training framework and not a PyTorch
+replacement.
+
 Beyond the experiment mirrors, the façade carries three general-purpose
 surfaces: `mythjure.torch.autograd` (opt-in reverse-mode autograd —
 `backward!`, `no-grad`, param-map grad helpers — validated leaf-for-leaf to
