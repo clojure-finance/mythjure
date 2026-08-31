@@ -157,7 +157,12 @@ Preliminary finding (n=10 seeds/cell): the qualitative story is width-robust
 the ρ=0.3 margin plateaus near 0.10, and the ρ=0.9 spectral margin shrinks
 roughly 2× per doubling of d — zero within estimator noise (~0.005) at
 d=256, where residual-verified fixed points sit at marginal stability.
-Outputs stay untracked like all script outputs.
+The follow-up `scripts/spectral_seed_expansion_torch.clj` (same launch
+pattern) reruns the ρ=0.9 ladder at 100 seeds per width and refines that
+last datum: the margin decays geometrically toward zero *from above*
+(+0.003 at d=256, ~5× its standard error — no sign change), while the
+non-convergent fraction, flat around 17–21% through d=128, jumps to 31%
+at d=256. Outputs stay untracked like all script outputs.
 
 ### Torch backend setup
 

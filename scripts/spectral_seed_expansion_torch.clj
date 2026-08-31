@@ -103,15 +103,18 @@
                {:rho-spec (:rho-spec mf) :growth-max (:growth-max mf)})))))
 
 (defn rung-summary [d heads runs complete?]
-  (let [fixed (filterv :rho-spec runs)
-        n-nc (count (filter #(= :non-convergent (:status %)) runs))
-        conv (filterv #(= :converged (:status %)) runs)]
+  ;; :budget-truncated seeds are recorded in :seeds/:statuses but excluded
+  ;; from every statistic, including the Wilson denominator.
+  (let [counted (filterv #(not= :budget-truncated (:status %)) runs)
+        fixed (filterv :rho-spec counted)
+        n-nc (count (filter #(= :non-convergent (:status %)) counted))
+        conv (filterv #(= :converged (:status %)) counted)]
     {:d d :n-heads heads
      :n-run (count runs)
      :complete? complete?
      :statuses (frequencies (map :status runs))
      :n-with-fixed-point (count fixed)
-     :non-convergent-fraction (when (pos? (count runs)) (wilson-95 n-nc (count runs)))
+     :non-convergent-fraction (when (pos? (count counted)) (wilson-95 n-nc (count counted)))
      :rho-spec (when (seq fixed) (agg (mapv :rho-spec fixed)))
      :margin (when (seq fixed) (agg (mapv #(- 1.0 (:rho-spec %)) fixed)))
      :growth-max (when (seq fixed) (agg (mapv :growth-max fixed)))
