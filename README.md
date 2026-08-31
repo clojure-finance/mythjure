@@ -1,6 +1,7 @@
 # mythjure
 
 [![arXiv](https://img.shields.io/badge/arXiv-2607.10681-b31b1b.svg)](https://arxiv.org/abs/2607.10681)
+[![CI](https://github.com/clojure-finance/mythjure/actions/workflows/ci.yml/badge.svg)](https://github.com/clojure-finance/mythjure/actions/workflows/ci.yml)
 
 Building a mini **looped (recurrent-depth) transformer** from scratch in Clojure,
 REPL-first, on a CPU — to understand the Parcae / S4 stability mathematics
@@ -173,6 +174,15 @@ Misconfigurations fail *before* CPython is embedded, with the fix in the
 error message — including the classic pyenv trap (an executable from one
 Python installation paired with a `libpython` from another, which would
 otherwise embed the wrong interpreter with the wrong `site-packages`).
+
+**Compatibility policy:** the pure-Clojure implementation and base suite
+need only a JVM (Clojure pinned in deps.edn). The torch backend is
+CI-tested on a matrix of Python {3.12, 3.13} × torch {2.9.1, 2.13.0} (CPU
+wheels); the reproduction gates — the scripts that re-derive the committed
+paper `.edn`s and diff them — run on demand (`reproduction gates` workflow)
+rather than per push, and have reproduced the paper record exactly on both
+torch 2.9.1 and 2.13.0. A torch upgrade that changes op semantics or
+aliasing fails a pinned test rather than passing silently.
 
 **Deploying an app on the backend:** an uberjar does not bundle Python — the
 runtime host needs the same two things (shared-build Python 3 + torch), and
