@@ -217,6 +217,7 @@
 
 ;; -- copies / layout ----------------------------------------------------------
 (defop clone      "Deep copy: fresh storage, breaks all aliasing. Differentiable (taped as identity) — `autograd/detach` for the opposite trade." [t] {:aliasing :copy})
+(defop from-numpy "Wrap a numpy ndarray as a tensor SHARING its buffer (torch.from_numpy) — the bulk-ingest lane's second half (numpy handle via core/import-module). Mutating either side is visible in the other; `clone` for an independent copy." [arr] {:aliasing :view})
 (defop contiguous "t in contiguous layout: returns t ITSELF when already contiguous, a fresh copy otherwise." [t] {:target :method :aliasing :input-dependent})
 
 ;; -- reductions ---------------------------------------------------------------

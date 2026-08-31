@@ -17,9 +17,11 @@
 ;;     files itself (downloaded once into data/mnist/, git-ignored).
 ;;   - Bulk bytes cannot cross the bridge: a JVM byte[] does not implement
 ;;     the Python buffer protocol (torch.frombuffer rejects it), so the file
-;;     is read PYTHON-side via numpy — guaranteed present as a torch
-;;     dependency. That one import-module call below is the only line in
-;;     either example that touches libpython-clj directly.
+;;     is read PYTHON-side via numpy (ubiquitous alongside torch, though
+;;     not a hard torch dependency: pip install numpy if missing)
+;;     through the facade's ingest lane: core/import-module for
+;;     the numpy handle, tensor/from-numpy to wrap the array (shared
+;;     buffer; the casts below allocate fresh tensors).
 ;;
 ;; Run:  clojure -M:torch examples/mnist.clj    (~11MB download on first run)
 (require '[clojure.java.io :as io]
@@ -57,15 +59,15 @@
         (io/copy in out)))
     (.getPath out)))
 
-;; The one raw libpython-clj line (see header): a handle to numpy. The facade
-;; helpers (tc/call, tc/call-kw) work on ANY Python object, numpy included.
-(def np ((requiring-resolve 'libpython-clj2.python/import-module) "numpy"))
+;; The facade helpers (tc/call, tc/call-kw) work on ANY Python object,
+;; numpy included.
+(def np (tc/import-module "numpy"))
 
 (defn read-idx
   "Read an IDX file as a flat uint8 torch tensor (header included) — the
-  bytes never enter the JVM: numpy reads the file, from_numpy wraps it."
+  bytes never enter the JVM: numpy reads the file, from-numpy wraps it."
   [path]
-  (op/torch-fn "from_numpy" [(tc/call-kw np "fromfile" [path] {:dtype "uint8"})]))
+  (t/from-numpy (tc/call-kw np "fromfile" [path] {:dtype "uint8"})))
 
 (defn images
   "IDX3 -> [N 784] float32 in [0,1]: drop the 16-byte header, reshape, cast."

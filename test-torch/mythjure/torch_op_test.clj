@@ -106,7 +106,12 @@
 (defn- M  [] (t/gt (X) (->t64 0.0)))
 
 (def ^:private op-examples
-  {'mythjure.torch.tensor/cat
+  {'mythjure.torch.tensor/from-numpy
+   #(let [np (core/import-module "numpy")]
+      (= [0.0 1.0 2.0 3.0]
+         (t/to-clj (t/from-numpy (core/call np "arange" 4.0)))))
+
+   'mythjure.torch.tensor/cat
    #(= [[1.0 -2.0 1.0 -2.0] [3.0 -4.0 3.0 -4.0]] (t/to-clj (t/cat [(X) (X)] :dim 1)))
 
    'mythjure.torch.tensor/stack

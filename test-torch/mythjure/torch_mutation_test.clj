@@ -77,6 +77,11 @@
    'contiguous   #(let [x (X)]
                     (and (shares-ptr? x (t/contiguous x))                      ; already contiguous → self
                          (not (shares-ptr? x (t/contiguous (t/transpose x)))))) ; else → copy
+   'from-numpy   #(let [np (core/import-module "numpy")
+                        a  (core/call np "zeros" 4)
+                        x  (t/from-numpy a)]
+                    (t/fill! x 7.0)                                            ; write via the tensor…
+                    (= [7.0 7.0 7.0 7.0] (core/->jvm (core/call a "tolist")))) ; …numpy sees it
    'add!         #(mutates-target? t/add! 1.0)
    'sub!         #(mutates-target? t/sub! 1.0)
    'mul!         #(mutates-target? t/mul! 2.0)

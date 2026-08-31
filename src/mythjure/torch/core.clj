@@ -215,6 +215,31 @@
   []
   @initialized*)
 
+(defn import-module
+  "Handle to an arbitrary Python module — the facade's door to third-party
+  packages (numpy, torchvision, ...). The returned handle works with the
+  generic helpers (`call`, `call-kw`, `attr`) and mythjure.torch.op/method:
+
+    (def np (import-module \"numpy\"))
+    (call-kw np \"fromfile\" [path] {:dtype \"uint8\"})
+
+  Bulk-data note: a JVM byte[] does not implement the Python buffer
+  protocol, so large arrays should be READ Python-side (numpy) and wrapped
+  with tensor/from-numpy — never round-tripped through nested Clojure
+  vectors. Throws readably before initialize! and when the module is not
+  installed in the embedded environment."
+  [module-name]
+  (when-not @initialized*
+    (throw (ex-info (str "import-module " module-name " requires initialize! first")
+                    {:module (str module-name)})))
+  (try
+    (py/import-module (str module-name))
+    (catch Exception e
+      (throw (ex-info (str "Python cannot import " module-name
+                           " — install it into the embedded environment "
+                           "(pip install " module-name ")")
+                      {:module (str module-name)} e)))))
+
 ;; ---------------------------------------------------------------------------
 ;; dtype / device resolution
 ;; ---------------------------------------------------------------------------

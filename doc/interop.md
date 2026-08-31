@@ -73,6 +73,17 @@ Return direction:
   `coll?`-ish, which is why the helper branches before the pyobj guard.
 - **Dict `keys()` views do not auto-convert** — they come back as opaque
   pointers. `core/py-keys` materializes via Python's `list()` first.
+- **Bulk data cannot cross the bridge as bytes**: a JVM `byte[]` does not
+  implement the Python buffer protocol (`torch.frombuffer` rejects it), and
+  round-tripping millions of values through nested Clojure vectors is
+  prohibitive. The ingest lane reads bulk data *Python-side*:
+  `core/import-module` hands you any installed module and works with the
+  same `call`/`call-kw` helpers (numpy is the natural reader — ubiquitous
+  in torch environments but NOT a hard torch dependency, so
+  `pip install numpy` if it's missing); `tensor/from-numpy` wraps the resulting ndarray as a tensor
+  **sharing its buffer** (`clone` for an independent copy). See
+  `examples/mnist.clj` for the full recipe (file → `np.fromfile` →
+  `from-numpy` → façade-side reshape/cast).
 - **`torch.__version__` is a `str` subclass** — the generic `->jvm` walk
   turns it into a seq of characters. Call `(str …)` on it.
 
