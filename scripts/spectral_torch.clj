@@ -45,9 +45,14 @@
   (walk/postwalk
    (fn [m]
      (if (map? m)
-       (cond-> m
-         (:slow m)           (update :slow (fn [v] (mapv #(dissoc % :resid) v)))
-         (:non-convergent m) (update :non-convergent (fn [v] (mapv #(dissoc % :resid) v))))
+       ;; into {} first: analysis tables are (sorted-map) keyed by DOUBLES,
+       ;; and a keyword lookup on those goes through the comparator and
+       ;; throws (Double vs Keyword). Plain maps make :slow/:non-convergent
+       ;; lookups safe; idempotent for maps that are already plain.
+       (let [m (into {} m)]
+         (cond-> m
+           (:slow m)           (update :slow (fn [v] (mapv #(dissoc % :resid) v)))
+           (:non-convergent m) (update :non-convergent (fn [v] (mapv #(dissoc % :resid) v)))))
        m))
    x))
 
