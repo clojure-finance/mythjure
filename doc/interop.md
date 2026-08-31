@@ -83,7 +83,10 @@ Return direction:
   `pip install numpy` if it's missing); `tensor/from-numpy` wraps the resulting ndarray as a tensor
   **sharing its buffer** (`clone` for an independent copy). See
   `examples/mnist.clj` for the full recipe (file → `np.fromfile` →
-  `from-numpy` → façade-side reshape/cast).
+  `from-numpy` → façade-side reshape/cast). For columnar JVM data there is
+  a higher-level lane: `mythjure.torch.tmd` (behind the `:tmd` alias)
+  bridges tech.ml.dataset datasets ⇄ tensors at buffer level, with copy
+  semantics in both directions (test-pinned).
 - **`torch.__version__` is a `str` subclass** — the generic `->jvm` walk
   turns it into a seq of characters. Call `(str …)` on it.
 

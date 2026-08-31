@@ -136,6 +136,16 @@ idioms — Clojure-side slicing and torch's `DataLoader` driven through the
 bridge — timed side by side, and a `save!`/`load-params` checkpoint
 round-trip.
 
+**scicloj bridge** (`mythjure.torch.tmd`, behind the extra `:tmd` alias):
+`ds->tensor` / `tensor->ds` convert between
+[tech.ml.dataset](https://github.com/techascent/tech.ml.dataset) datasets
+and tensors at buffer level (dtype-next ⇄ numpy — the fast lane, not
+element-wise Clojure), with **copy semantics in both directions, pinned by
+tests** — mutating a tensor never touches its source dataset and vice
+versa, so the mutation rules above extend across the ecosystem boundary
+with no caveats. Once data is in dataset form, the rest of the scicloj
+stack (tablecloth, kindly/noj visualization) applies as-is.
+
 The first post-paper experiment built on this speed is
 `scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
 a budget-guarded width ladder for the paper's §5.3 fixed-point/spectral
@@ -257,6 +267,7 @@ Then, in the REPL (or via your editor):
 - `:nrepl` — nREPL server on an auto-assigned port (see `.nrepl-port`), for editor connection.
 - `:test` — cognitect test-runner (pure suite only).
 - `:torch` — adds libpython-clj for the optional PyTorch backend (`clojure -M:nrepl:torch`).
+- `:tmd` — adds tech.ml.dataset for the scicloj bridge (`clojure -M:nrepl:torch:tmd`).
 - `:test-torch` — runs the pure and torch suites together.
 
 The base classpath is dependency-free on purpose: the whole project is pure
