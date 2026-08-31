@@ -1,9 +1,21 @@
 (ns mythjure.example-test
-  "Pins the §4 gate artifact: the non-mythjure toy example must run end to end
-  through the general-purpose facade surfaces alone. The example's own asserts
-  (>=0.9 test accuracy for BOTH model idioms) fire on regression; this test
-  fails on any throw."
+  "Pins the §4 gate artifacts: the non-mythjure examples must run end to end
+  through the general-purpose facade surfaces alone. Each example's own
+  asserts (accuracy floors; MNIST also the exact checkpoint round-trip) fire
+  on regression; these tests fail on any throw. The MNIST test is guarded on
+  the cached download so the suite stays network-free."
   (:require [clojure.test :refer [deftest is]]))
+
+(deftest mnist-example-runs
+  ;; Guarded on the cached download so the suite never needs the network:
+  ;; run `clojure -M:torch examples/mnist.clj` once to enable this test.
+  (if (.exists (clojure.java.io/file "data/mnist/train-images-idx3-ubyte"))
+    (let [scratch (create-ns 'mythjure.mnist-example-scratch)]
+      (binding [*ns* scratch]
+        (clojure.core/refer 'clojure.core)
+        (load-file "examples/mnist.clj"))
+      (is true "examples/mnist.clj completed (its own accuracy + checkpoint asserts passed)"))
+    (println "  [skip] mnist-example-runs: data/mnist not cached — run: clojure -M:torch examples/mnist.clj")))
 
 (deftest two-moons-example-runs
   (let [scratch (create-ns 'mythjure.example-test-scratch)]

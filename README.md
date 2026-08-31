@@ -114,7 +114,13 @@ A complete outside-user example lives in **[examples/two_moons.clj](examples/two
 two-moons task, trained twice through the general-purpose surfaces alone —
 once as a Clojure param map + forward fn, once as a Python `nn.Sequential`
 driven through the module interop — deterministic, no extra dependencies,
-pinned by the torch test suite.
+pinned by the torch test suite. Its tutorial-scale companion is
+**[examples/mnist.clj](examples/mnist.clj)** (`clojure -M:torch examples/mnist.clj`,
+~11MB one-time download into git-ignored `data/`): raw-IDX MNIST ingestion
+with no torchvision dependency, the same MLP trained through both batching
+idioms — Clojure-side slicing and torch's `DataLoader` driven through the
+bridge — timed side by side, and a `save!`/`load-params` checkpoint
+round-trip.
 
 The first post-paper experiment built on this speed is
 `scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
