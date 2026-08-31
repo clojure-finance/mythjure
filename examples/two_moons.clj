@@ -11,7 +11,6 @@
 (require '[mythjure.torch.core :as tc]
          '[mythjure.torch.tensor :as t]
          '[mythjure.torch.nn :as nn]
-         '[mythjure.torch.op :as op]
          '[mythjure.torch.autograd :as ag]
          '[mythjure.torch.optim :as optim]
          '[mythjure.torch.module :as module])
@@ -58,9 +57,7 @@
 ;; Shared pieces
 ;; ---------------------------------------------------------------------------
 
-;; No curated seed surface yet — reach torch.manual_seed through the generic
-;; tier (op.clj tier 2; explicit, no wrapper needed).
-(op/torch-fn "manual_seed" [42])
+(t/manual-seed 42)
 
 (defn accuracy
   "Fraction of rows where argmax(logits) equals the int64 target."

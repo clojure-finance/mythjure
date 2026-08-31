@@ -28,7 +28,6 @@
          '[mythjure.torch.core :as tc]
          '[mythjure.torch.tensor :as t]
          '[mythjure.torch.nn :as nn]
-         '[mythjure.torch.op :as op]
          '[mythjure.torch.autograd :as ag]
          '[mythjure.torch.optim :as optim]
          '[mythjure.torch.module :as module])
@@ -98,7 +97,7 @@
 ;; Model: the param-map idiom from examples/two_moons.clj, 784 -> 128 -> 10.
 ;; ---------------------------------------------------------------------------
 
-(op/torch-fn "manual_seed" [42])   ; still tier-2 (no curated seed surface)
+(t/manual-seed 42)
 
 (defn linear-init [in out]
   {:w (t/mul (t/randn [in out]) (/ 1.0 (Math/sqrt in)))

@@ -215,6 +215,11 @@
 (defop flatten      "Flatten dims :start_dim..:end_dim (defaults 0..-1) into one. View when t is contiguous, copy otherwise (like reshape)." [t] {:aliasing :input-dependent})
 (defop broadcast-to "Broadcast t to `shape` (expanded view, no copy)."        [t shape] {:coerce {1 :tuple} :aliasing :view})
 
+;; -- global RNG ---------------------------------------------------------------
+;; Deliberately global-state-mutating with no ! — the !-convention marks ops
+;; that mutate a TENSOR argument (aliasing hazards); seeding touches no tensor.
+(defop manual-seed "Seed torch's global RNG on every device (deterministic randn etc.); returns the CPU Generator." [seed] {})
+
 ;; -- copies / layout ----------------------------------------------------------
 (defop clone      "Deep copy: fresh storage, breaks all aliasing. Differentiable (taped as identity) — `autograd/detach` for the opposite trade." [t] {:aliasing :copy})
 (defop from-numpy "Wrap a numpy ndarray as a tensor SHARING its buffer (torch.from_numpy) — the bulk-ingest lane's second half (numpy handle via core/import-module). Mutating either side is visible in the other; `clone` for an independent copy." [arr] {:aliasing :view})

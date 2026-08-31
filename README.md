@@ -118,6 +118,19 @@ today, no wrapper needed; and `require-python` for docstring-level discovery
 at the REPL — see the namespace docstring for the promotion policy between
 tiers).
 
+On top of those surfaces — and of the paper's model code, so it belongs to
+mythjure proper rather than the extractable façade — sits
+`mythjure.torch.looped`, the **autograd-native looped encoder** for
+continuous inputs: a learned prelude `E = X·W-in (+ wpe)` and a pooled
+readout head (last-position or mean-pool → final LayerNorm → projection)
+around the paper's weight-tied looped core, reused unchanged and
+differentiable as-is. The loss stays caller-side (`forward` returns a
+differentiable embedding), training runs through `autograd`+`optim` or the
+bundled `train!`, all paper carry modes are supported, and the carry
+diagnostics — ā, dL/dā, per-channel convergence — remain first-class on
+this path; gradients are validated by finite differences over every leaf
+in every carry mode.
+
 The interop edge cases the façade absorbs — scalar/FFI segfault class,
 per-op coercion luck, `:reload-all`, dtype pins, aliasing, autograd
 semantics — are catalogued in **[doc/interop.md](doc/interop.md)**, each
@@ -134,7 +147,14 @@ pinned by the torch test suite. Its tutorial-scale companion is
 with no torchvision dependency, the same MLP trained through both batching
 idioms — Clojure-side slicing and torch's `DataLoader` driven through the
 bridge — timed side by side, and a `save!`/`load-params` checkpoint
-round-trip.
+round-trip. The looped-encoder template is
+**[examples/looped_encoder.clj](examples/looped_encoder.clj)**
+(`clojure -M:torch examples/looped_encoder.clj`): variable-length windows of
+synthetic return vectors → `mythjure.torch.looped` encoder → embedding → a
+caller-defined contrastive loss → `train!` with live carry diagnostics →
+nearest-neighbor lookup in embedding space → exact checkpoint round-trip —
+the pattern a downstream project copies to train a learned distance metric
+on the looped block.
 
 **scicloj bridge** (`mythjure.torch.tmd`, behind the extra `:tmd` alias):
 `ds->tensor` / `tensor->ds` convert between

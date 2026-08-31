@@ -111,6 +111,13 @@
       (= [0.0 1.0 2.0 3.0]
          (t/to-clj (t/from-numpy (core/call np "arange" 4.0)))))
 
+   'mythjure.torch.tensor/manual-seed
+   #(let [_ (t/manual-seed 42)
+          a (t/to-clj (t/randn [3] :dtype :float64))
+          _ (t/manual-seed 42)
+          b (t/to-clj (t/randn [3] :dtype :float64))]
+      (= a b))
+
    'mythjure.torch.tensor/cat
    #(= [[1.0 -2.0 1.0 -2.0] [3.0 -4.0 3.0 -4.0]] (t/to-clj (t/cat [(X) (X)] :dim 1)))
 

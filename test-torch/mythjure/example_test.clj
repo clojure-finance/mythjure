@@ -1,9 +1,12 @@
 (ns mythjure.example-test
   "Pins the §4 gate artifacts: the non-mythjure examples must run end to end
-  through the general-purpose facade surfaces alone. Each example's own
-  asserts (accuracy floors; MNIST also the exact checkpoint round-trip) fire
-  on regression; these tests fail on any throw. The MNIST test is guarded on
-  the cached download so the suite stays network-free."
+  through the general-purpose facade surfaces alone (two_moons, mnist), and
+  the looped-encoder template (looped_encoder — the downstream-consumer
+  pattern over mythjure.torch.looped) must keep working as published. Each
+  example's own asserts (accuracy floors; MNIST and looped_encoder also the
+  exact checkpoint round-trip) fire on regression; these tests fail on any
+  throw. The MNIST test is guarded on the cached download so the suite stays
+  network-free."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is]]))
 
@@ -24,3 +27,10 @@
       (clojure.core/refer 'clojure.core)
       (load-file "examples/two_moons.clj"))
     (is true "examples/two_moons.clj completed (its own accuracy asserts passed)")))
+
+(deftest looped-encoder-example-runs
+  (let [scratch (create-ns 'mythjure.looped-encoder-example-scratch)]
+    (binding [*ns* scratch]
+      (clojure.core/refer 'clojure.core)
+      (load-file "examples/looped_encoder.clj"))
+    (is true "examples/looped_encoder.clj completed (its own accuracy + checkpoint asserts passed)")))
