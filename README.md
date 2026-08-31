@@ -104,6 +104,11 @@ today, no wrapper needed; and `require-python` for docstring-level discovery
 at the REPL — see the namespace docstring for the promotion policy between
 tiers).
 
+The interop edge cases the façade absorbs — scalar/FFI segfault class,
+per-op coercion luck, `:reload-all`, dtype pins, aliasing, autograd
+semantics — are catalogued in **[doc/interop.md](doc/interop.md)**, each
+with a pointer to the test that pins it.
+
 The first post-paper experiment built on this speed is
 `scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
 a budget-guarded width ladder for the paper's §5.3 fixed-point/spectral

@@ -54,8 +54,16 @@
   [params & {:keys [lr] :or {lr 3e-4}}]
   (core/call-kw core/optim "Adam" [(all-param-tensors params)] {:lr lr}))
 
-(defn step! [optimizer] (core/call optimizer "step") nil)
-(defn zero-grad! [optimizer] (core/call optimizer "zero_grad") nil)
+(defn step!
+  "One optimizer step — mutates the managed param tensors in place."
+  [optimizer]
+  (core/call optimizer "step")
+  nil)
+(defn zero-grad!
+  "Clear the .grad of every managed param tensor."
+  [optimizer]
+  (core/call optimizer "zero_grad")
+  nil)
 
 (defn clip-grad-norm!
   "Clip gradients of a param map in place; returns the pre-clip total norm."

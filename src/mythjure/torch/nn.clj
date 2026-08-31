@@ -24,6 +24,7 @@
   (core/call-kw core/F "gelu" [x] {:approximate "tanh"}))
 
 (defn softmax
+  "Softmax over dim (default -1, the last dim — row-wise, matching linalg)."
   ([x] (softmax x -1))
   ([x dim] (core/call-kw core/F "softmax" [x] {:dim dim})))
 
@@ -33,10 +34,11 @@
   (core/call core/F "cross_entropy" logits targets))
 
 (defn log-softmax
+  "Log-softmax over dim (default -1, the last dim)."
   ([x] (log-softmax x -1))
   ([x dim] (core/call-kw core/F "log_softmax" [x] {:dim dim})))
 
-(defn softplus [x] (core/call core/F "softplus" x))
+(defn softplus "Elementwise softplus, ln(1+e^x)." [x] (core/call core/F "softplus" x))
 
 (defn sdpa
   "Fused scaled-dot-product attention. Not used in the experiment path — a

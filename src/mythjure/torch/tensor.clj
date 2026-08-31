@@ -32,16 +32,24 @@
   [shape & {:as opts}]
   (core/call-kw core/torch "randn" [(core/py-tuple shape)] (make-opts opts)))
 
-(defn zeros [shape & {:as opts}]
+(defn zeros
+  "Zero-filled tensor of the given shape."
+  [shape & {:as opts}]
   (core/call-kw core/torch "zeros" [(core/py-tuple shape)] (make-opts opts)))
 
-(defn ones [shape & {:as opts}]
+(defn ones
+  "One-filled tensor of the given shape."
+  [shape & {:as opts}]
   (core/call-kw core/torch "ones" [(core/py-tuple shape)] (make-opts opts)))
 
-(defn arange [n & {:as opts}]
+(defn arange
+  "0..n-1 as a 1-D tensor."
+  [n & {:as opts}]
   (core/call-kw core/torch "arange" [n] (make-opts opts)))
 
-(defn eye [n & {:as opts}]
+(defn eye
+  "n×n identity matrix."
+  [n & {:as opts}]
   (core/call-kw core/torch "eye" [n] (make-opts opts)))
 
 (defn from-clj
@@ -54,7 +62,7 @@
   [t]
   (core/call core/torch "zeros_like" t))
 
-(defn ones-like [t] (core/call core/torch "ones_like" t))
+(defn ones-like "Ones with the same shape/dtype/device as t." [t] (core/call core/torch "ones_like" t))
 
 (defn rsqrt "1/√t elementwise." [t] (core/call core/torch "rsqrt" t))
 
@@ -62,7 +70,9 @@
 ;; Inspection / conversion
 ;; ---------------------------------------------------------------------------
 
-(defn shape [t]
+(defn shape
+  "Shape of t as a Clojure vector of longs."
+  [t]
   (vec (core/->jvm (core/attr t "shape"))))
 
 (defn item
@@ -96,15 +106,15 @@
 ;; Elementwise + linear algebra
 ;; ---------------------------------------------------------------------------
 
-(defn matmul [a b] (core/call core/torch "matmul" a b))
-(defn add [a b] (core/call core/torch "add" a b))
-(defn sub [a b] (core/call core/torch "sub" a b))
-(defn mul [a b] (core/call core/torch "mul" a b))
-(defn div [a b] (core/call core/torch "div" a b))
-(defn exp [t] (core/call core/torch "exp" t))
-(defn tanh [t] (core/call core/torch "tanh" t))
-(defn sqrt [t] (core/call core/torch "sqrt" t))
-(defn neg [t] (core/call core/torch "neg" t))
+(defn matmul "Matrix product (batched over leading dims)." [a b] (core/call core/torch "matmul" a b))
+(defn add "Elementwise a+b (broadcasts)." [a b] (core/call core/torch "add" a b))
+(defn sub "Elementwise a-b (broadcasts)." [a b] (core/call core/torch "sub" a b))
+(defn mul "Elementwise a*b (broadcasts)." [a b] (core/call core/torch "mul" a b))
+(defn div "Elementwise a/b (broadcasts)." [a b] (core/call core/torch "div" a b))
+(defn exp "e^t elementwise." [t] (core/call core/torch "exp" t))
+(defn tanh "tanh elementwise." [t] (core/call core/torch "tanh" t))
+(defn sqrt "√t elementwise." [t] (core/call core/torch "sqrt" t))
+(defn neg "-t elementwise." [t] (core/call core/torch "neg" t))
 
 (defn transpose
   "Swap two dims; with no dims, the last two (matrix transpose).
@@ -125,6 +135,7 @@
   (item (core/call core/torch "norm" t)))
 
 (defn sum
+  "Sum of all elements (0-dim tensor), or over dim."
   ([t] (core/call core/torch "sum" t))
   ([t dim] (core/call-kw core/torch "sum" [t] {:dim dim})))
 
@@ -134,14 +145,15 @@
   (core/call-kw core/torch "sum" [t] {:dim dim :keepdim true}))
 
 (defn mean-keep
+  "Mean over dim, keeping it (size 1) for broadcasting."
   [t dim]
   (core/call-kw core/torch "mean" [t] {:dim dim :keepdim true}))
 
-(defn log [t] (core/call core/torch "log" t))
-(defn sigmoid [t] (core/call core/torch "sigmoid" t))
+(defn log "Natural log elementwise." [t] (core/call core/torch "log" t))
+(defn sigmoid "Logistic sigmoid elementwise." [t] (core/call core/torch "sigmoid" t))
 
-(defn tmax [t] (core/call core/torch "max" t))
-(defn tmin [t] (core/call core/torch "min" t))
+(defn tmax "Global max as a 0-dim tensor (t- spares clojure.core/max)." [t] (core/call core/torch "max" t))
+(defn tmin "Global min as a 0-dim tensor (t- spares clojure.core/min)." [t] (core/call core/torch "min" t))
 
 ;; ---------------------------------------------------------------------------
 ;; Shape surgery / indexing / masking (attention support)
@@ -165,9 +177,9 @@
   [t dim index]
   (core/call core/torch "gather" t dim index))
 
-(defn gt [a b] (core/call core/torch "gt" a b))
-(defn lt [a b] (core/call core/torch "lt" a b))
-(defn logical-or [a b] (core/call core/torch "logical_or" a b))
+(defn gt "Elementwise a>b as a bool tensor." [a b] (core/call core/torch "gt" a b))
+(defn lt "Elementwise a<b as a bool tensor." [a b] (core/call core/torch "lt" a b))
+(defn logical-or "Elementwise boolean OR." [a b] (core/call core/torch "logical_or" a b))
 
 (defn masked-fill
   "Set entries where the bool mask is true to `value` (e.g. ##-Inf)."

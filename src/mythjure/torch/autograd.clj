@@ -34,7 +34,9 @@
   ([t] (requires-grad! t true))
   ([t flag] (core/call t "requires_grad_" flag) t))
 
-(defn requires-grad? [t]
+(defn requires-grad?
+  "Whether t is flagged to accumulate gradients (torch requires_grad)."
+  [t]
   (boolean (core/->jvm (core/attr t "requires_grad"))))
 
 (defn grad

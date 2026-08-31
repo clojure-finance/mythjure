@@ -210,7 +210,10 @@
         (throw t))))
   :ok)
 
-(defn initialized? [] @initialized*)
+(defn initialized?
+  "True once initialize! has successfully embedded CPython in this JVM."
+  []
+  @initialized*)
 
 ;; ---------------------------------------------------------------------------
 ;; dtype / device resolution

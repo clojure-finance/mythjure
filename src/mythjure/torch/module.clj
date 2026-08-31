@@ -52,8 +52,18 @@
   [m dtype-kw]
   (core/call m "to" (core/dtype dtype-kw)))
 
-(defn train-mode! [m] (core/call m "train") m)
-(defn eval-mode!  [m] (core/call m "eval") m)
+(defn train-mode!
+  "Switch m to training mode (dropout active, batchnorm updating) — in
+  place, like torch. Returns m."
+  [m]
+  (core/call m "train")
+  m)
+(defn eval-mode!
+  "Switch m to eval mode (dropout off, batchnorm frozen) — in place,
+  like torch. Returns m."
+  [m]
+  (core/call m "eval")
+  m)
 
 ;; ---------------------------------------------------------------------------
 ;; state_dict ↔ Clojure param map
