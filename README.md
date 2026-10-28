@@ -64,7 +64,8 @@ Pure-Clojure scripts run with `clojure -M scripts/<name>.clj`.
 experiments in paper order, capturing each run's output to `scripts/<name>.log`
 and printing a timed PASS/FAIL summary (`--no-test` skips the suite, `--quick`
 skips the slow LM/curriculum runs); the v2 additions below are run
-individually. Scripts named `*_torch.clj` run on the PyTorch backend
+individually. Scripts named `*_torch.clj`, plus `implosion_probe.clj` and
+`sandwich_check.clj`, run on the PyTorch backend
 (`clojure -M:torch scripts/<name>.clj`, CPU, float64; see *Torch backend
 setup* below): `spectral_torch`, `seed_verify_torch` and `train_run_torch`
 rerun pure-Clojure experiments ~11–86× faster and check that they reproduce
