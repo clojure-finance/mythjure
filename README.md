@@ -14,18 +14,22 @@ hands-on rather than at scale.
 
 ## Approach
 
-Pure Clojure, manual backprop (BPTT through one shared weight block — a small,
-regular set of gradients). No native dependencies: the linear algebra is dense
-`clojure.core`, fast enough at toy scale and completely explicit. The goal is to
-build the stability mathematics from scratch — discretization, the gated
-recurrence, hand-derived gradients, and a full training loop — to understand the
-mechanisms directly rather than to reach for scale.
+The core is pure Clojure with manual backprop (BPTT through one shared weight
+block — a small, regular set of gradients) and no native dependencies: the
+linear algebra is dense `clojure.core`, fast enough at toy scale and completely
+explicit. The goal is to build the stability mathematics from scratch —
+discretization, the gated recurrence, hand-derived gradients, and a full
+training loop — to understand the mechanisms directly rather than to reach for
+scale. An optional PyTorch backend (*Torch backend* below) mirrors that core
+behind the same function signatures, for speed and for the dense linear
+algebra of the later experiments; the pure implementation stays the oracle it
+is tested against.
 
 ## Layout (`src/`)
 
 | Path | What |
 |---|---|
-| `dynamics.clj` | Step 0: discretization + stability dynamics, pure `clojure.core`. Runnable now. |
+| `dynamics.clj` | Step 0: discretization + stability dynamics, pure `clojure.core`. |
 | `nonlinear.clj` | Step 1: nonlinear `R(h,e)=tanh(Wh+e)` in the loop; reproduces the Parcae spiral geometry. |
 | `linalg.clj` | Dense linear algebra: matmul, softmax, LayerNorm, GELU, causal + **windowed** masks. |
 | `block.clj` | Step 2: real decoder block — multi-head attention (causal or windowed via `:window`) + GELU MLP, pre-LN + residuals. Forward. |
@@ -38,8 +42,8 @@ mechanisms directly rather than to reach for scale.
 | `train.clj` | Adam, minibatch loop, and the three carry diagnostics (ā distribution, dL/dā sign, per-channel convergence ratio). |
 | `copytask.clj` | Synthetic copy-across-a-gap task `[A][PAD×k][QUERY]` with a single dial `k`. |
 
-Post-paper, `src/` also holds `*_torch.clj` mirrors of the namespaces above
-and the `mythjure/torch/` façade — see *Torch backend* below.
+`src/` also holds `*_torch.clj` mirrors of the namespaces above and the
+`mythjure/torch/` façade — see *Torch backend* below.
 
 **Tests** (`test/`): `backprop_test.clj` (primitive VJPs, attention, block, BPTT) + `model_test.clj` (full-model finite-diff over every leaf × standard/windowed/ablated/free/faithful) + `analysis_test.clj` (`spectral-radius` pinned on analytically-known maps). Run `clojure -M:test` → **10 tests, 123 assertions**, analytic vs finite-diff to <1e-6.
 
@@ -191,23 +195,16 @@ versa, so the façade's mutation rules (*Mutation & views* below) extend
 across the ecosystem boundary with no caveats. Once data is in dataset form, the rest of the scicloj
 stack (tablecloth, kindly/noj visualization) applies as-is.
 
-The first post-paper experiment built on this speed is
-`scripts/spectral_dsweep_torch.clj` (`clojure -M:torch scripts/spectral_dsweep_torch.clj`),
-a budget-guarded width ladder for the paper's §5.3 fixed-point/spectral
-claims: d ∈ {32, 64, 128, 256} at head-dim 8 (heads = d/8, d-ff = 4d),
-10 seeds × ρ ∈ {0.3, 0.9}, the paper's schedules, with the d=32 rung diffed
-against the recorded `seed_verify.edn` as a reproduce-the-paper control.
-Preliminary finding (n=10 seeds/cell): the qualitative story is width-robust
-(non-normality gap, non-convergent seed minority, C/F drifting ≈2.3→2.9),
-the ρ=0.3 margin plateaus near 0.10, and the ρ=0.9 spectral margin shrinks
-roughly 2× per doubling of d — zero within estimator noise (~0.005) at
-d=256, where residual-verified fixed points sit at marginal stability.
-The follow-up `scripts/spectral_seed_expansion_torch.clj` (same launch
-pattern) reruns the ρ=0.9 ladder at 100 seeds per width and refines that
-last datum: the margin decays geometrically toward zero *from above*
-(+0.003 at d=256, ~5× its standard error — no sign change), while the
-non-convergent fraction, flat around 17–21% through d=128, jumps to 31%
-at d=256. Outputs stay untracked like all script outputs.
+The experiments built on this speed are the `*_torch.clj` rows of the
+experiments table: the width ladder (`spectral_dsweep_torch.clj`, budget-guarded,
+d ∈ {32, 64, 128, 256} at head-dim 8 with heads = d/8 and d-ff = 4d, its d=32
+rung diffed against the recorded `seed_verify.edn` as a reproduce-the-paper
+control; `spectral_seed_expansion_torch.clj` at 100 seeds per width;
+`width_block_eig_torch.clj` for the exact values) and the dense-Jacobian
+measurements (`spectral_eig_torch.clj`, `cf_seeds_torch.clj`,
+`mean_shift_eig_torch.clj`). All launch as
+`clojure -M:torch scripts/<name>.clj`; outputs stay untracked like all script
+outputs.
 
 ### Torch backend setup
 
@@ -251,9 +248,10 @@ otherwise embed the wrong interpreter with the wrong `site-packages`).
 **Compatibility policy:** the pure-Clojure implementation and base suite
 need only a JVM (Clojure pinned in deps.edn). The torch backend is
 CI-tested on a matrix of Python {3.12, 3.13} × torch {2.9.1, 2.13.0} (CPU
-wheels); the reproduction gates — the scripts that re-derive the committed
-paper `.edn`s and diff them — run on demand (`reproduction gates` workflow)
-rather than per push, and have reproduced the paper record exactly on both
+wheels); the reproduction gates — `seed_verify_torch.clj` and
+`spectral_torch.clj`, which re-derive the paper's recorded `.edn`s (pinned at
+`paper-v1`) and diff them — run on demand (`reproduction gates` workflow)
+rather than per push, and have reproduced the record exactly on both
 torch 2.9.1 and 2.13.0. A torch upgrade that changes op semantics or
 aliasing fails a pinned test rather than passing silently.
 

@@ -188,5 +188,7 @@ Details in the `mythjure.torch.op` namespace docstring.
 | state_dict round-trip, live-weights training | `torch_module_test.clj` |
 | Discovery, precedence, pyenv-trap detection, readable errors | `torch_doctor_test.clj` |
 | Forward/backward/training trajectory vs. oracle | `model_torch_test.clj`, `backprop_torch_test.clj`, `train_torch_test.clj` |
+| Spectral / fixed-point analysis vs. oracle | `analysis_torch_test.clj` |
+| Looped encoder: finite-difference gradients in every carry mode, determinism, diagnostics, checkpoint round trip | `torch_looped_test.clj` |
 | The outside-user examples run end to end | `example_test.clj` |
 | scicloj bridge round-trips + copies in both directions | `torch_tmd_test.clj` |

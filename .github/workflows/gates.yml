@@ -1,7 +1,8 @@
 # Reproduction gates (manual): rerun the torch-backend reproduction scripts
-# and diff against the committed paper .edns. ~10 min of compute — dispatch
-# by hand (e.g. after a torch upgrade) rather than per push. Each script
-# exits non-zero on any section mismatch.
+# and diff against the paper's recorded .edns, which are pinned at the
+# paper-v1 tag (untracked on main), so they are checked out from the tag
+# first. ~10 min of compute — dispatch by hand (e.g. after a torch upgrade)
+# rather than per push. Each script exits non-zero on any section mismatch.
 name: reproduction gates
 
 on:
@@ -16,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: fetch the recorded .edns from the paper-v1 tag
+        run: |
+          git fetch --depth=1 origin tag paper-v1
+          git checkout paper-v1 -- scripts/seed_verify.edn scripts/spectral.edn
       - uses: actions/setup-java@v5
         with: {distribution: temurin, java-version: '21'}
       - uses: DeLaGuardo/setup-clojure@13.4
