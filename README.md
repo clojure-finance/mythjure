@@ -94,12 +94,17 @@ dense linear algebra.
 | `stochastic_depth.clj` | §6.4 (Tab. 5, Fig. 7 right) | The intervention with T drawn per batch from {7,…,16} (`clojure -M scripts/stochastic_depth.clj learned|zero|frozen|frozen002 [seed] [lr]`): a learned carry (seeds 0 and 1) or a frozen ā=0.5 carry trains and reads out across the sampled depths; the **zero carry (seeds 0–3, plus a learning-rate probe) and the frozen ā=0.02 carry fail to train**, so dispensability is a fixed-depth result and under sampled depth the carry's magnitude matters for trainability. |
 | `diagonal_memory.clj` | §6.5 (Fig. 8) | **Boundary:** on an axis-aligned per-channel task the carry *is* recruited — learned ā tracks the per-channel targets (corr 0.92). |
 
-## Torch backend (post-paper development)
+## Torch backend
 
-Everything above — and every number in the paper — runs on the dependency-free
-pure-Clojure implementation. Since `paper-v1`, the repo also carries an
-optional **PyTorch backend** behind the same function signatures, for speed
-(~86× on a full training step at paper scale, CPU-only): `mythjure.torch.*` is
+Every namespace above, every training run and every power-iteration
+measurement in the paper runs on the dependency-free pure-Clojure
+implementation. Since `paper-v1`, the repo also carries an optional
+**PyTorch backend** behind the same function signatures, for speed
+(~86× on a full training step at paper scale, CPU-only) and for the v2
+paper's dense linear algebra (the `*_torch.clj` rows in the table above:
+direct eigendecompositions and SVDs of materialized Jacobians, the width
+ladder); the paper's reproducibility statement says which numbers come
+from which. `mythjure.torch.*` is
 a thin Clojure façade over [libpython-clj](https://github.com/clj-python/libpython-clj),
 and `block-torch` / `backprop-torch` / `model-torch` / `train-torch` /
 `analysis-torch` mirror their pure namespaces one-to-one using the same hand-derived VJPs translated
@@ -315,8 +320,9 @@ Then, in the REPL (or via your editor):
 - `:tmd` — adds tech.ml.dataset for the scicloj bridge (`clojure -M:nrepl:torch:tmd`).
 - `:test-torch` — runs the pure and torch suites together.
 
-The base classpath is dependency-free on purpose: the whole project is pure
-`clojure.core`, needs nothing native, and the REPL always starts clean.
+The base classpath is dependency-free on purpose: the pure implementation is
+`clojure.core` only, needs nothing native, and the REPL always starts clean;
+the torch backend and the scicloj bridge are opt-in aliases.
 
 ## Citation
 
