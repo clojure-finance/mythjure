@@ -46,33 +46,53 @@ and the `mythjure/torch/` façade — see *Torch backend* below.
 ## Experiments (`scripts/`)
 
 These scripts reproduce the experiments in the companion paper
-[*"LayerNorm as Implicit Gain Control in Looped Transformers"*](https://arxiv.org/abs/2607.10681)
-(arXiv:2607.10681); the table below maps each script to its result and paper section. Each writes a `.log` and
-(most) a `.edn`. The outputs recorded for the paper are pinned at tag
-[`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1)
-(untracked on `main` so ongoing development doesn't churn result files).
-The `*_torch.clj` variants rerun the slowest experiments on the torch backend
-(~11–86× faster) and verify they reproduce the recorded results exactly.
+[*"Spectral Margins and Memory Routing in Looped Transformers"*](https://arxiv.org/abs/2607.10681)
+(arXiv:2607.10681; this is the v2 revision, v1 was titled *"LayerNorm as
+Implicit Gain Control in Looped Transformers"*). The table below maps each script to the paper's
+tables, figures and sections (v2 numbering). Each writes `scripts/<name>.log`
+and (most) `scripts/<name>.edn`; outputs are untracked on `main` so ongoing
+development doesn't churn result files. The code state behind v1 is pinned at
+tag [`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1),
+behind v2 at tag `paper-v2`.
 
-Reproduce every pure-Clojure experiment in one go with `scripts/run_all.sh` — it runs the test suite
-(the grad checks) and then every experiment below in paper order, capturing each
-run's output to `scripts/<name>.log` and printing a timed PASS/FAIL summary. Flags:
-`--no-test` skips the suite, `--quick` skips the slow LM/curriculum runs. To run a
-single experiment: `clojure -M scripts/<name>.clj`.
+Pure-Clojure scripts run with `clojure -M scripts/<name>.clj`.
+`scripts/run_all.sh` runs the test suite (the grad checks) and then the v1
+experiments in paper order, capturing each run's output to `scripts/<name>.log`
+and printing a timed PASS/FAIL summary (`--no-test` skips the suite, `--quick`
+skips the slow LM/curriculum runs); the v2 additions below are run
+individually. Scripts named `*_torch.clj` run on the PyTorch backend
+(`clojure -M:torch scripts/<name>.clj`, CPU, float64; see *Torch backend
+setup* below): `spectral_torch`, `seed_verify_torch` and `train_run_torch`
+rerun pure-Clojure experiments ~11–86× faster and check that they reproduce
+the recorded results exactly, the others are the v2 measurements that need
+dense linear algebra.
 
-| Script | Paper § | Finding |
+| Script | Paper | Finding |
 |---|---|---|
-| `spectral.clj` | §5.3 (Tab. spectral/cf/seed-robustness), App. A | Power iteration on Jacobian–vector products at residual-verified fixed points. **J_G is non-normal**: ‖J_G‖₂>1 in every instance that converges (9/9 seeds at ρ=0.3, 8/8 at ρ=0.9) while ρ_spec<1 at every verified fixed point — confirms the spiral step-size rebound. The finite-diff probe under-estimates operator norms ~2.6×, so the true self-stabilization constant is **C/F≈2.5, not ≈1** (`cf-analysis`). Seed sweep: the spectral margin collapses monotonically as ρ→1 (0.159→0.012), and **a minority of seeds (1–2/10 at every carry tested) never converge to a fixed point at all** (bounded, non-settling orbits) — the diagonal constraint ρ(Ā)<1 is necessary but not sufficient for convergence of the full recurrence. Plus injection ratio ‖H*+E‖/‖H*‖ across ρ (App. A). |
-| `seed_verify.clj` | §5.3 (Tab. seed-robustness) | Dense cross-check of ρ_spec (validates the matrix-free estimate to ≤0.004) and ‖J_G‖₂ per seed at ρ=0.3, 0.9 across 10 seeds; settles each seed to a residual-verified fixed point and reports non-convergent seeds separately. |
-| `foundations.clj` | §3–§5 (Tab. 1, 5, 13, Fig. 1–2) | The analytical/illustrative numbers: unconstrained loop explodes vs Parcae-constrained stays bounded, the Banach contraction threshold (§4.1), the spiral geometry (§5.1, Fig. 1), `Lip(block) ∝ 1/‖H‖` (§4, Tab. 1), the shrinking contraction margin as ρ→1 (§5.3 / App. C probe record, Tab. 13, Fig. 2), and per-channel carry governed by the slowest channel (§5.4, Tab. 5). Deterministic, seconds to run. |
-| `unconstrained_carry.clj` | §7.1 (Tab. 6, Fig. 3) | `:parcae` vs `:free` across lr: constrained ρ(Ā)<1 always; **free learns ρ>1 at high lr** with residual explosion — reproduces Parcae Fig. 3 / Table 2. |
-| `train_run.clj` | §7.2 (Tab. 7) | Trains the LM on Tiny Shakespeare; ā **self-corrects** (stays ~0.2, no cliff) at low lr. |
-| `copy_sweep.clj` | §7.3 (Tab. 8) | Full-attention copy sweep: ā ignores gap `k` — attention (position-memory) solves it, carry (depth-memory) idle. |
-| `window_feasibility.clj` / `window_curriculum.clj` | §7.4 (Tab. 9, Fig. 4) | Windowed (w=1) copy: carry stays flat; depth-memory flows through the block's **nonlinear recurrence**, not the linear carry. |
-| `windowed_hard.clj` | §7.4 (Tab. 9, Fig. 4) | Removes the k≥6 learnability confound (finer curriculum, d=32): solves **k=2→6**, ā flat/declining (0.52→0.49) & `dL/dā` anti-cliff even at k=6 (predicted 0.83). |
-| `ablation.clj` / `ablation_k4.clj` | §7.5 (Tab. 10, Fig. 5) | Ablate the block's view of `H_t` ⇒ windowed copy fails (full attn still solves) — confirms the nonlinear recurrence is the mechanism. |
-| `faithful_check.clj` | §7.4 note (Parcae relationship, §1) | Central finding (§7.4) holds under the **faithful** Parcae architecture (learnable Δ + B̄e + prelude LN): ā flat, `dL/dā` anti-cliff at k=2,4. |
-| `diagonal_memory.clj` | §7.6 (Tab. 11, Fig. 6) | **Boundary of the "free constraint":** on an axis-aligned per-channel task, the carry *is* recruited — learned ā tracks per-channel targets (corr 0.92). Block subsumes carry only for cross-channel/position tasks. |
+| `foundations.clj` | §3–§5, App. H (Fig. 10, Fig. 11) | The analytical/illustrative numbers: unconstrained loop explodes vs Parcae-constrained stays bounded, the scalar contraction threshold, the rotating approach to the fixed point (App. H, Fig. 10), the tanh toy's three regimes (Fig. 11), `Lip(block) ∝ 1/‖H‖` (§4), the shrinking margin as ρ→1, and per-channel carry governed by the slowest channel (§5.4). Deterministic, seconds to run. |
+| `spectral.clj` | §5.2–5.3, App. E (Tab. 1, 2, 8; Fig. 3), App. A | Power iteration on Jacobian–vector products at residual-verified fixed points. **J_G is non-normal**: ‖J_G‖₂>1 in every instance that converges while ρ_spec<1 at every verified fixed point; the finite-difference probe under-estimates operator norms ~2.6×, so **C/F≈2.5** (Tab. 1, `cf-analysis`). Seed sweep: the spectral margin collapses as ρ→1 (0.159→0.012), and **a minority of seeds never settle** (bounded, non-settling orbits). Plus the injection ratio ‖H*+E‖/‖H*‖ across ρ (App. A). |
+| `seed_verify.clj` | §5.3 (Tab. 2) | Dense cross-check of ρ_spec (validates the matrix-free estimate to ≤0.004) and ‖J_G‖₂ per seed at ρ=0.3, 0.9 across 10 seeds; settles each seed to a residual-verified fixed point and reports non-convergent seeds separately. |
+| `cf_seeds_torch.clj` | §5.2 (Tab. 1, last column) | The gain-attenuation ratio C/F across the ten seeds of Tab. 2 at every carry of record (J_f = J_G − ρI at the residual-verified fixed point, top singular value by SVD): per-carry mean 2.56–2.71, std 0.3–0.5, no trend in ρ; seed 7 reproduces Tab. 1 exactly. |
+| `spectral_eig_torch.clj` | §5.3–5.4, App. E (Tab. 2, 3, 8) | Direct float64 eigendecomposition/SVD of every power-iteration number of record (SVD matches ‖J_G‖₂ to ≤4e-4, eig matches ρ_spec to ≤0.008); verifies the **causal block-lower-triangular structure** of J_G exactly (spectrum = union of per-token diagonal-block spectra); true operator norms and spectral radii for the per-channel carry profiles of Tab. 3. |
+| `mean_shift_eig_torch.clj` | §5.3 (Prop. 4, Eq. 6) | LayerNorm's per-token shift invariance makes each mean-shift direction an exact eigenvector of J_G with eigenvalue ρ (scalar carry), verified on the dense Jacobian of record; with non-uniform carry the direction feeds back into the centered dynamics. |
+| `sandwich_check.clj` | §7 (spectral measurements) | Tests the proposed certificate ρ_spec ≤ ρ + max_s ‖J_ss‖₂ and its log-norm refinement: max_s ‖J_ss‖₂ ≈ 1.9–2.1 (1−ρ), max_s μ₂(J_ss) ≈ 1.2–1.3 (1−ρ), so neither certifies contraction at any operating point. |
+| `spectral_dsweep_torch.clj` | §5.3, App. E (Fig. 4, Tab. 9) | Width ladder d ∈ {32, 64, 128, 256} (head-dim 8), 10 seeds × ρ ∈ {0.3, 0.9}; the d=32 rung reproduces `seed_verify.edn`. The ρ=0.9 spectral margin roughly halves per doubling of width; the non-settling minority persists at every width. |
+| `spectral_seed_expansion_torch.clj` | §5.3, App. E (Fig. 4, Tab. 9) | The ρ=0.9 ladder at 100 seeds per width (power-iteration estimates; the exact values are in the next row): margin decays geometrically toward zero from above (+0.003 at d=256), with the converged / still-decaying / non-settling split and the counts of negative margin estimates; non-settling fraction 17–21% through d=128, 31% at d=256. |
+| `width_block_eig_torch.clj` | §5.3, App. E (Fig. 4, Tab. 9) | Exact spectral radii on the same ladder (`MYTHJURE_WIDTH_D=<d> clojure -M:torch scripts/width_block_eig_torch.clj`, one rung per process, outputs `width_block_eig_torch_d<d>.{edn,log}`): every seed re-settled, J_G materialized, ρ_spec taken exactly over the per-token diagonal blocks (block-lower-triangular structure verified at every width), operator norm by SVD. **Every converged seed at every width has ρ_spec<1 (0 of 285) and ‖J_G‖₂>1**; the converged-only mean margin falls 0.0206 → 0.0056, about a third per doubling (≈ d^(-2/3)); the only negative values are still-decaying seeds measured off the fixed point. These are the values in Tab. 9. |
+| `implosion_probe.clj` | §4 (Fig. 2), App. C | Controlled activation implosion from residual-verified fixed points (state rescaled by α down to 3e-3, state-only and state+injection modes): `Lip(f)·spread` stays ≈2–4 over 3.5 decades (the gain-control law with true operator norms), local radius up to 192, yet every perturbed trajectory re-converges to the original fixed point; with the injection at natural scale the normalizer input cannot implode below the injection's own spread, capping Lip(f) ≈ 4. |
+| `unconstrained_carry.clj` | §6, App. D (Tab. 7) | `:parcae` vs `:free` across lr: constrained ρ(Ā)<1 always; **free learns ρ>1 at high lr** with residual explosion. |
+| `train_run.clj` | App. F | Trains the LM on Tiny Shakespeare; ā stays near its 0.192 initialization at low lr. |
+| `copy_sweep.clj` | App. F | Full-attention copy sweep: ā ignores gap `k` — attention (position memory) solves it, the carry (depth memory) stays idle. |
+| `window_feasibility.clj` / `window_curriculum.clj` | §6.1 | Windowed (w=1) copy: carry stays flat; depth memory flows through the block's **nonlinear recurrence**, not the linear carry. |
+| `windowed_hard.clj` | §6.1, App. F (Fig. 5, Tab. 10) | The run of record: finer curriculum, d=32, solves **k=2→6**, ā flat/declining (0.52→0.49) with `dL/dā` pointing away from recruitment even at k=6. |
+| `ablation.clj` / `ablation_k4.clj` | §6.2, App. F (Fig. 9) | Ablate the block's view of `H_t` ⇒ windowed copy fails (full attention still solves) — the nonlinear recurrence is the mechanism. |
+| `faithful_check.clj` | §3 (Parcae relationship) | The windowed-copy finding holds under the **faithful** Parcae architecture (learnable Δ + B̄e + prelude LN). |
+| `carry_intervention.clj` | §6.3, App. G (Tab. 4, Tab. 11, Fig. 6; stability after training) | Carry-freezing intervention on the run of record (same init and batch streams): learned carry replicates; **frozen ā=0.5 and ā=0.02 solve every stage**; post-hoc ā:=0 on the trained model collapses to chance, ā:=0.5 recovers; retention of earlier gaps per condition; dense Jacobian of the trained model (fixed point more contractive than at init, T=8 state transiently expansive). Saves `carry_intervention_model_a.edn` for `depth_accuracy.clj`. |
+| `carry_zero.clj` | §6.3, App. G (Tab. 4, Tab. 11, Fig. 6) | Condition (d): carry frozen at **exactly zero** (log-A = 10, ā underflows to 0.0) solves every stage, so the multi-hop memory needs no linear retention at all. |
+| `windowed_seed_replication.clj` / `windowed_seed_ext.clj` / `seed2_rescue.clj` | §6.3 (seed replication) | Learned carry 5/5 seeds, zero carry 9/10; the failing seed stays at chance at 3× budget, and any single change of batch order, initialization or learning rate rescues it — an optimization failure, consistent with the carry easing descent like a depth-axis skip connection. |
+| `depth_accuracy.clj` | §6.3 (Fig. 7, left) | Evaluates the trained learned-carry model at loop depths other than its training depth T=8: accuracy lives in a window of a few iterations around T=8 and is at chance once the loop settles. |
+| `stochastic_depth.clj` | §6.4 (Tab. 5, Fig. 7 right) | The intervention with T drawn per batch from {7,…,16} (`clojure -M scripts/stochastic_depth.clj learned|zero|frozen|frozen002 [seed] [lr]`): a learned carry (seeds 0 and 1) or a frozen ā=0.5 carry trains and reads out across the sampled depths; the **zero carry (seeds 0–3, plus a learning-rate probe) and the frozen ā=0.02 carry fail to train**, so dispensability is a fixed-depth result and under sampled depth the carry's magnitude matters for trainability. |
+| `diagonal_memory.clj` | §6.5 (Fig. 8) | **Boundary:** on an axis-aligned per-channel task the carry *is* recruited — learned ā tracks the per-channel targets (corr 0.92). |
 
 ## Torch backend (post-paper development)
 
@@ -303,8 +323,8 @@ The base classpath is dependency-free on purpose: the whole project is pure
 If you use this code or build on the paper, please cite:
 
 ```bibtex
-@misc{buehlmaier2026layernorm,
-  title         = {LayerNorm as Implicit Gain Control in Looped Transformers},
+@misc{buehlmaier2026spectral,
+  title         = {Spectral Margins and Memory Routing in Looped Transformers},
   author        = {Matthias M. M. Buehlmaier},
   year          = {2026},
   eprint        = {2607.10681},
@@ -315,4 +335,5 @@ If you use this code or build on the paper, please cite:
 ```
 
 The exact code state used for the paper's experiments is pinned at tag
-[`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1).
+[`paper-v1`](https://github.com/clojure-finance/mythjure/releases/tag/paper-v1)
+(v1) and tag `paper-v2` (v2).

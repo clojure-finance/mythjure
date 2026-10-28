@@ -3,7 +3,7 @@
 # run_all.sh — reproduce the whole mythjure research pipeline in one go.
 #
 # Runs the test suite (grad checks) and then every experiment script in paper
-# order (§3 → §7.6; see the README "Experiments" table). Each Clojure script writes its own .edn result; this
+# order (§3 → §6.5, appendices; see the README "Experiments" table). Each Clojure script writes its own .edn result; this
 # wrapper captures each run's stdout+stderr to scripts/<name>.log and prints a
 # timed PASS/FAIL summary at the end.
 #
@@ -49,16 +49,16 @@ SCRIPTS=(
   "foundations"           # §3–§5 discretization/spiral/Lipschitz diagnostics (fast, deterministic)
   "spectral"              # §5.3  ρ_spec vs ‖J_G‖₂ (power iteration on JVPs) + injection ratio + seed robustness (slow: ~80 min, settle cap on non-convergent seeds)
   "seed_verify"           # §5.3  dense cross-check of ρ_spec/‖J_G‖₂ across 10 seeds at ρ=0.3,0.9 (slow: ~35 min)
-  "unconstrained_carry"   # §7.1  constrained vs free carry across lr
-  "train_run"             # §7.2  Tiny Shakespeare LM; carry self-corrects
-  "copy_sweep"            # §7.3  full-attention copy sweep
-  "window_feasibility"    # §7.4  can w=1 learn a short gap at all?
-  "window_curriculum"     # §7.4  windowed copy curriculum
-  "windowed_hard"         # §7.4  k=2..6 unconfounded, finer curriculum
-  "ablation"              # §7.5  ablate block's view of H_t (k=2)
-  "ablation_k4"           # §7.5  same ablation at a 4-hop gap
+  "unconstrained_carry"   # App. D constrained vs free carry across lr
+  "train_run"             # App. F Tiny Shakespeare LM; carry self-corrects
+  "copy_sweep"            # App. F full-attention copy sweep
+  "window_feasibility"    # §6.1  can w=1 learn a short gap at all?
+  "window_curriculum"     # §6.1  windowed copy curriculum
+  "windowed_hard"         # §6.1  k=2..6 unconfounded, finer curriculum
+  "ablation"              # §6.2  ablate block's view of H_t (k=2)
+  "ablation_k4"           # §6.2  same ablation at a 4-hop gap
   "faithful_check"        # note  finding holds under faithful Parcae arch
-  "diagonal_memory"       # §7.6  axis-aligned task: carry IS recruited
+  "diagonal_memory"       # §6.5  axis-aligned task: carry IS recruited
 )
 QUICK_SKIP=("spectral" "seed_verify" "train_run" "window_curriculum" "windowed_hard" "diagonal_memory")
 
